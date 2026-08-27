@@ -1,0 +1,1390 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Restflow | Refund notifications</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* brand tokens sampled live from yashcx-embeds.netlify.app/restflow/ */
+    --bg: #000000;
+    --bg-alt: #0b0d0e;
+    --card: #0e0e12;
+    --card-alt: #141414;
+    --card-inset: #1a1a1a;
+    --border: rgba(255,255,255,0.06);
+    --border-md: rgba(255,255,255,0.09);
+    --border-strong: rgba(255,255,255,0.12);
+    --border-faint: rgba(255,255,255,0.2);
+    --cyan: #00b8db;
+    --cyan-bright: #00d3f3;
+    --blue: #2b7fff;
+    --blue-deep: #155dfc;
+    --gradient: linear-gradient(90deg, #00d3f3 0%, #2b7fff 100%);
+    --success: #22c55e;
+    --success-bright: #05df72;
+    --amber: #fb923c;
+    --danger: #f87171;
+    --danger-muted: #f2a3a3;
+    --text: #ffffff;
+    --text-secondary: #c9c9cc;
+    --text-muted: #8a8a90;
+    --text-meta: #66666c;
+    --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+    --r-pill: 9999px;
+    --r-card: 14px;
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--font-body);
+    -webkit-font-smoothing:antialiased;
+    overflow:hidden;
+  }
+  button{ font-family:inherit; }
+
+  .app{
+    position:relative;
+    height:100vh;
+    width:100vw;
+    display:flex;
+    flex-direction:column;
+    background:var(--bg);
+  }
+
+  /* ambient glow behind everything, like the landing page's dark vignette */
+  .app::before{
+    content:"";
+    position:absolute; inset:0;
+    background:
+      radial-gradient(560px 360px at 26% 46%, rgba(43,127,255,0.10), transparent 65%),
+      radial-gradient(420px 300px at 62% 30%, rgba(0,211,243,0.06), transparent 70%);
+    pointer-events:none;
+    z-index:0;
+  }
+
+  /* ============ TOP BAR ============ */
+  .topbar{
+    position:relative;
+    z-index:5;
+    height:52px;
+    flex:0 0 auto;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 14px 0 16px;
+    background:var(--bg);
+    border-bottom:1px solid var(--border-md);
+  }
+  .topbar-left{ display:flex; align-items:center; gap:10px; min-width:0; }
+  .logo-mark{
+    width:24px; height:24px; border-radius:7px;
+    background:var(--gradient);
+    display:flex; align-items:center; justify-content:center;
+    flex:0 0 auto;
+  }
+  .logo-mark svg{ width:14px; height:14px; }
+  .logo-word{ font-weight:700; font-size:14px; letter-spacing:-0.2px; color:var(--text); flex:0 0 auto; }
+  .crumb-sep{ color:var(--text-meta); font-size:13px; flex:0 0 auto; }
+  .crumb{ color:var(--text-muted); font-size:13px; flex:0 0 auto; }
+  .workflow-name{
+    font-weight:600; font-size:13.5px; color:var(--text);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    flex:0 1 auto;
+  }
+  .status-pill{
+    display:inline-flex; align-items:center; gap:6px;
+    padding:4px 10px 4px 8px;
+    border-radius:var(--r-pill);
+    font-size:11.5px; font-weight:600; letter-spacing:0.1px;
+    flex:0 0 auto; white-space:nowrap;
+  }
+  .status-pill.deployed{
+    background:rgba(34,197,94,0.14);
+    color:var(--success-bright);
+    border:1px solid rgba(34,197,94,0.22);
+  }
+  .status-pill .dot{
+    width:6px; height:6px; border-radius:50%;
+    background:var(--success-bright);
+    animation:dotBreathe 2.2s ease-in-out infinite;
+  }
+
+  .topbar-right{ display:flex; align-items:center; gap:8px; flex:0 0 auto; }
+  .icon-ghost{
+    width:30px; height:30px; border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+    background:transparent; border:1px solid transparent;
+    color:var(--text-muted);
+    cursor:default;
+  }
+  .icon-ghost svg{ width:15px; height:15px; }
+  .icon-ghost.has-dot{ position:relative; }
+  .icon-ghost.has-dot::after{
+    content:""; position:absolute; top:6px; right:6px;
+    width:5px; height:5px; border-radius:50%;
+    background:var(--cyan-bright);
+  }
+  .btn-run{
+    display:inline-flex; align-items:center; gap:6px;
+    height:30px; padding:0 14px 0 11px;
+    border-radius:8px; border:none;
+    background:var(--gradient);
+    color:#052033;
+    font-weight:700; font-size:12.5px; letter-spacing:0.1px;
+    cursor:default;
+    box-shadow:0 4px 14px -4px rgba(0,179,219,0.45);
+  }
+  .btn-run svg{ width:11px; height:11px; }
+  .avatar{
+    width:28px; height:28px; border-radius:50%;
+    background:linear-gradient(135deg,#2a2a30,#141416);
+    border:1px solid var(--border-strong);
+    display:flex; align-items:center; justify-content:center;
+    color:var(--text-muted);
+  }
+  .avatar svg{ width:14px; height:14px; }
+
+  /* ============ BODY LAYOUT ============ */
+  .body{
+    position:relative;
+    z-index:1;
+    flex:1 1 auto;
+    display:flex;
+    min-height:0;
+  }
+
+  /* ---- left rail ---- */
+  .rail{
+    flex:0 0 56px;
+    background:var(--bg);
+    border-right:1px solid var(--border-md);
+    display:flex; flex-direction:column;
+    align-items:center;
+    gap:6px;
+    padding:12px 0;
+    z-index:3;
+  }
+  .rail-item{
+    width:36px; height:36px; border-radius:10px;
+    border:1px solid transparent;
+    background:transparent;
+    color:var(--text-muted);
+    display:flex; align-items:center; justify-content:center;
+    cursor:default;
+    transition:background 0.35s ease, border-color 0.35s ease, color 0.35s ease;
+  }
+  .rail-item svg{ width:17px; height:17px; }
+  .rail-item.active{
+    background:rgba(43,127,255,0.14);
+    border-color:rgba(43,127,255,0.24);
+    color:#6aa8ff;
+  }
+  .rail-label{
+    font-size:9px; color:var(--text-meta); text-align:center; margin-top:-2px;
+  }
+
+  /* ---- canvas wrap (hosts the view stack / product tour) ---- */
+  .canvas-wrap{
+    position:relative;
+    flex:1 1 auto;
+    min-width:0;
+    display:flex;
+    flex-direction:column;
+    background:var(--bg-alt);
+    overflow:hidden;
+  }
+
+  /* ============ VIEW STACK (multi-view tour) ============ */
+  .view-stack{ position:relative; flex:1 1 auto; min-height:0; }
+  .view{
+    position:absolute; inset:0;
+    display:flex; flex-direction:column;
+    opacity:0; pointer-events:none;
+    transition:opacity 0.5s ease;
+  }
+  .view.active{ opacity:1; pointer-events:auto; }
+
+  .canvas-toolbar{
+    flex:0 0 auto;
+    display:flex; gap:8px;
+    padding:12px 16px 0;
+    z-index:4;
+  }
+  .canvas-toolbar button{
+    display:inline-flex; align-items:center; gap:6px;
+    height:28px; padding:0 11px;
+    border-radius:7px;
+    background:var(--card-alt);
+    border:1px solid var(--border-strong);
+    color:var(--text-secondary);
+    font-size:12px; font-weight:500;
+    cursor:default;
+  }
+  .canvas-toolbar button svg{ width:11px; height:11px; }
+
+  .canvas{
+    position:relative;
+    flex:1 1 auto;
+    min-height:0;
+    overflow:hidden;
+    background-image: radial-gradient(rgba(255,255,255,0.09) 1px, transparent 1.2px);
+    background-size: 22px 22px;
+    background-position: 4px 4px;
+  }
+
+  .connectors{ position:absolute; inset:0; overflow:visible; pointer-events:none; z-index:1; }
+  .connectors path{
+    fill:none;
+    stroke:var(--border-faint);
+    stroke-width:1.4;
+  }
+
+  .junction-dot{
+    position:absolute; width:7px; height:7px; margin:-3.5px 0 0 -3.5px;
+    border-radius:50%;
+    background:var(--cyan-bright);
+    box-shadow:0 0 6px 1px rgba(0,211,243,0.55);
+    z-index:2;
+    animation:dotBreathe 2.6s ease-in-out infinite;
+  }
+  .junction-dot.green{ background:var(--success-bright); box-shadow:0 0 6px 1px rgba(5,223,114,0.5); }
+
+  .pulse{
+    position:absolute; top:0; left:0;
+    width:8px; height:8px; margin:-4px 0 0 -4px;
+    border-radius:50%;
+    background:radial-gradient(circle, #ffffff 0%, var(--cyan-bright) 45%, transparent 75%);
+    box-shadow:0 0 14px 3px rgba(0,211,243,0.65);
+    offset-distance:0%;
+    opacity:0;
+    z-index:3;
+    animation:flow 3s cubic-bezier(.45,0,.2,1) infinite;
+  }
+  #p2{ animation-delay:1s; }
+  #p3{ animation-delay:2s; }
+
+  @keyframes flow{
+    0%{ offset-distance:0%; opacity:0; }
+    3%{ opacity:1; }
+    30%{ offset-distance:100%; opacity:1; }
+    38%{ opacity:0; }
+    100%{ offset-distance:100%; opacity:0; }
+  }
+  @keyframes dotBreathe{
+    0%,100%{ opacity:0.55; transform:scale(0.9); }
+    50%{ opacity:1; transform:scale(1.08); }
+  }
+
+  /* ---- node cards ---- */
+  .node{
+    position:absolute;
+    width:196px;
+    background:var(--card-alt);
+    border:1px solid var(--border-strong);
+    border-radius:var(--r-card);
+    padding:11px 13px 12px;
+    box-shadow:0 14px 34px -16px rgba(0,0,0,0.75), 0 0 0 1px rgba(0,0,0,0.2);
+    z-index:2;
+  }
+  .node-head{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .node-icon{
+    width:22px; height:22px; border-radius:7px;
+    display:flex; align-items:center; justify-content:center;
+    flex:0 0 auto;
+  }
+  .node-icon svg{ width:12px; height:12px; }
+  .node-icon.icon-webhook{ background:rgba(251,146,60,0.18); border:1px solid rgba(251,146,60,0.3); color:var(--amber); }
+  .node-icon.icon-api{ background:rgba(43,127,255,0.18); border:1px solid rgba(43,127,255,0.32); color:#6aa8ff; }
+  .node-icon.icon-chat{ background:#1c1c1f; border:1px solid var(--border-strong); color:#e4e4e6; }
+  .node-title{
+    font-size:12.5px; font-weight:600; color:var(--text);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .node-sub{
+    font-size:11px; color:var(--text-muted);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    margin-bottom:9px;
+  }
+  .node-sub.mono{ font-family:var(--font-mono); font-size:10.5px; }
+  .method{
+    display:inline-block; font-size:9px; font-weight:700;
+    padding:1px 5px; border-radius:4px; margin-right:6px;
+    vertical-align:1px; letter-spacing:0.3px;
+  }
+  .method.post{ background:rgba(43,127,255,0.2); color:#8ab8ff; }
+  .method.get{ background:rgba(0,184,219,0.18); color:#5fd8ee; }
+
+  /* status chips must never wrap: the pill collapses to one row of text always,
+     card/label sizing is tuned so the widest chip (PostRefunds) still fits. */
+  .status-chip{
+    display:inline-flex; align-items:center; gap:5px;
+    font-size:10.5px; font-weight:600;
+    padding:3px 8px;
+    border-radius:var(--r-pill);
+    font-family:var(--font-mono);
+    letter-spacing:0.1px;
+    white-space:nowrap;
+  }
+  .status-chip.idle{ background:var(--border); color:var(--text-muted); }
+  .status-chip.idle .chip-dot{
+    width:5px; height:5px; border-radius:50%;
+    background:var(--success-bright);
+    animation:dotBreathe 2s ease-in-out infinite;
+  }
+  .status-chip.success{ background:rgba(34,197,94,0.13); color:var(--success-bright); border:1px solid rgba(34,197,94,0.2); }
+  .status-chip .chip-check{ font-size:10px; line-height:1; }
+  .status-chip .chip-spinner{
+    display:none;
+    width:9px; height:9px; border-radius:50%;
+    border:1.5px solid rgba(255,255,255,0.18);
+    border-top-color:var(--text-secondary);
+    animation:spin 0.7s linear infinite;
+  }
+  .status-chip.running{ background:var(--border); color:var(--text-muted); border:1px solid var(--border-strong); }
+  .status-chip.running .chip-spinner{ display:inline-block; }
+  .status-chip.running .chip-check{ display:none; }
+  .status-chip.success-flash{ animation:flashSuccess 0.7s ease-out; }
+  .status-chip.retried{ background:rgba(251,146,60,0.13); color:var(--amber); border:1px solid rgba(251,146,60,0.22); }
+  .status-chip.failed{ background:rgba(248,113,113,0.10); color:var(--danger-muted); border:1px solid rgba(248,113,113,0.2); }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  @keyframes flashSuccess{
+    0%{ box-shadow:0 0 0 0 rgba(34,197,94,0.5); }
+    100%{ box-shadow:0 0 0 8px rgba(34,197,94,0); }
+  }
+
+  .pulse-ring{
+    position:absolute; inset:0;
+    border-radius:var(--r-card);
+    border:1px solid rgba(251,146,60,0.5);
+    opacity:0;
+    animation:listenPulse 2.6s ease-out infinite;
+    pointer-events:none;
+  }
+  @keyframes listenPulse{
+    0%{ transform:scale(1); opacity:0.55; }
+    75%{ transform:scale(1.06); opacity:0; }
+    100%{ transform:scale(1.06); opacity:0; }
+  }
+
+  /* ---- env switcher ---- */
+  .env-switch{
+    position:absolute; left:16px; bottom:16px;
+    display:inline-flex;
+    background:var(--card-alt);
+    border:1px solid var(--border-strong);
+    border-radius:var(--r-pill);
+    padding:3px;
+    gap:2px;
+    z-index:4;
+    font-family:var(--font-mono);
+  }
+  .env-switch.inline{ position:static; align-self:flex-start; margin-top:2px; }
+  .env-opt{
+    border:none; background:transparent;
+    font-size:11px; font-weight:600; letter-spacing:0.2px;
+    padding:5px 12px;
+    border-radius:var(--r-pill);
+    color:var(--text-meta);
+    cursor:default;
+  }
+  .env-opt.active{
+    background:rgba(43,127,255,0.18);
+    color:#8ab8ff;
+  }
+
+  /* ============ MONITORS VIEW ============ */
+  .mon-wrap{
+    flex:1 1 auto; min-height:0; overflow:auto;
+    padding:20px 24px 24px;
+    display:flex; flex-direction:column; gap:16px;
+  }
+  .mon-stats{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; flex:0 0 auto; }
+  .stat-card{
+    background:var(--card-alt); border:1px solid var(--border-strong);
+    border-radius:var(--r-card); padding:14px 16px;
+  }
+  .stat-label{
+    font-size:11px; color:var(--text-muted); font-weight:600; letter-spacing:0.2px;
+    display:flex; align-items:center; gap:6px; margin-bottom:8px;
+  }
+  .stat-window{
+    font-size:9.5px; color:var(--text-meta); font-family:var(--font-mono);
+    background:var(--border); padding:1px 6px; border-radius:5px;
+  }
+  .stat-value{ font-size:25px; font-weight:700; color:var(--text); letter-spacing:-0.3px; }
+  .stat-unit{ font-size:13px; font-weight:600; color:var(--text-muted); margin-left:3px; }
+
+  .mon-chart-card{
+    background:var(--card-alt); border:1px solid var(--border-strong);
+    border-radius:var(--r-card); padding:16px 18px 12px; flex:0 0 auto;
+  }
+  .mon-chart-head{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:10px; }
+  .mon-chart-title{ font-size:12.5px; font-weight:700; color:var(--text); }
+  .mon-chart-sub{ font-size:11px; color:var(--text-meta); }
+  .mon-chart{ width:100%; height:120px; display:block; }
+  .grad-start{ stop-color:var(--blue); stop-opacity:0.22; }
+  .grad-end{ stop-color:var(--blue); stop-opacity:0; }
+  .chart-line{
+    fill:none; stroke:var(--cyan-bright); stroke-width:2;
+    stroke-dasharray:1; stroke-dashoffset:1;
+    transition:stroke-dashoffset 1.3s cubic-bezier(.4,0,.2,1);
+  }
+  .chart-line.drawn{ stroke-dashoffset:0; }
+  .chart-area{ opacity:0; transition:opacity 1s ease 0.15s; }
+  .chart-area.drawn{ opacity:1; }
+  .mon-chart-axis{
+    display:flex; justify-content:space-between;
+    font-size:10px; color:var(--text-meta); font-family:var(--font-mono);
+    margin-top:4px;
+  }
+
+  .mon-table-card{
+    background:var(--card-alt); border:1px solid var(--border-strong);
+    border-radius:var(--r-card); padding:6px 0 4px;
+    flex:1 1 auto; min-height:0; overflow:auto;
+  }
+  .mon-table-head{ font-size:12.5px; font-weight:700; color:var(--text); padding:8px 18px 10px; }
+  .mon-table{ width:100%; border-collapse:collapse; font-size:12px; }
+  .mon-table th{
+    text-align:left; font-size:10px; font-weight:600; color:var(--text-meta);
+    text-transform:uppercase; letter-spacing:0.4px;
+    padding:6px 18px; border-top:1px solid var(--border); border-bottom:1px solid var(--border);
+  }
+  .mon-table td{ padding:9px 18px; color:var(--text-secondary); border-bottom:1px solid var(--border); white-space:nowrap; }
+  .mon-table tr:last-child td{ border-bottom:none; }
+  .mon-table td.mono{ font-family:var(--font-mono); color:var(--text-muted); font-size:11.5px; }
+  .mon-table tr.row-failed td{ background:rgba(248,113,113,0.045); }
+
+  /* ============ APIs VIEW ============ */
+  .api-wrap{
+    flex:1 1 auto; min-height:0; overflow:auto;
+    padding:20px 24px 24px;
+    display:flex; flex-direction:column; gap:16px;
+  }
+  .api-head{ flex:0 0 auto; }
+  .api-title{ font-size:14px; font-weight:700; color:var(--text); }
+  .api-sub{ font-size:11.5px; color:var(--text-meta); margin-top:2px; }
+  .api-list{
+    background:var(--card-alt); border:1px solid var(--border-strong);
+    border-radius:var(--r-card); overflow:hidden; flex:0 0 auto;
+  }
+  .api-row{
+    display:flex; align-items:center; gap:12px;
+    padding:13px 18px; border-bottom:1px solid var(--border);
+  }
+  .api-row:last-child{ border-bottom:none; }
+  .api-dot{
+    width:7px; height:7px; border-radius:50%; flex:0 0 auto;
+    background:var(--success-bright); box-shadow:0 0 6px 1px rgba(5,223,114,0.45);
+  }
+  .api-logo{
+    width:28px; height:28px; border-radius:8px; flex:0 0 auto;
+    display:flex; align-items:center; justify-content:center;
+    font-size:12px; font-weight:700; color:#fff;
+  }
+  .api-name{ font-size:13px; font-weight:600; color:var(--text); flex:0 0 auto; min-width:158px; }
+  .api-meta{ font-size:11.5px; color:var(--text-muted); flex:0 0 auto; min-width:90px; }
+  .api-badge{
+    font-size:10px; font-weight:600; color:var(--text-secondary);
+    background:var(--border); padding:3px 8px; border-radius:6px; flex:0 0 auto;
+  }
+  .api-methods{ display:flex; gap:5px; flex:0 0 auto; min-width:96px; }
+  .api-called{ font-size:11px; color:var(--text-meta); margin-left:auto; flex:0 0 auto; white-space:nowrap; }
+
+  /* ============ RUN INSPECTOR VIEW ============ */
+  .run-wrap{
+    flex:1 1 auto; min-height:0; overflow:auto;
+    padding:20px 24px 24px;
+    display:flex; flex-direction:column; gap:16px;
+  }
+  .run-head{ display:flex; align-items:center; gap:12px; flex:0 0 auto; }
+  .run-head-left{ display:flex; align-items:baseline; gap:9px; margin-right:2px; }
+  .run-id{ font-size:13px; font-weight:700; color:var(--text); }
+  .run-wf{ font-size:12px; color:var(--text-meta); }
+  .run-total{ margin-left:auto; font-size:11px; color:var(--text-meta); }
+
+  .run-row{ display:flex; gap:14px; flex:0 0 auto; align-items:flex-start; }
+  .run-steps{
+    flex:0 0 206px;
+    background:var(--card-alt); border:1px solid var(--border-strong);
+    border-radius:var(--r-card); padding:4px 14px;
+  }
+  .run-step{ display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); }
+  .run-step:last-child{ border-bottom:none; }
+  .run-step-name{ font-size:11.5px; font-weight:600; color:var(--text); }
+  .run-step-lat{ font-size:10px; color:var(--text-meta); margin-top:1px; font-family:var(--font-mono); }
+  .run-step-tick{ margin-left:auto; color:var(--success-bright); font-size:12px; flex:0 0 auto; }
+
+  .run-json{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:12px; }
+  .json-card{
+    background:var(--card-alt); border:1px solid var(--border-strong);
+    border-radius:var(--r-card); padding:11px 14px 13px;
+  }
+  .json-card-head{
+    display:flex; align-items:center; justify-content:space-between;
+    font-size:10.5px; font-weight:700; color:var(--text-muted);
+    text-transform:uppercase; letter-spacing:0.4px; margin-bottom:8px;
+  }
+  .json-status{
+    font-family:var(--font-mono); font-size:10px; font-weight:700;
+    color:var(--success-bright); background:rgba(34,197,94,0.13);
+    border:1px solid rgba(34,197,94,0.2); padding:1px 7px; border-radius:var(--r-pill);
+    text-transform:none; letter-spacing:0.1px;
+  }
+  .json-body{
+    margin:0; font-family:var(--font-mono); font-size:11px; line-height:1.7;
+    color:var(--text-meta); white-space:pre; overflow-x:auto;
+  }
+  .json-body .jkey{ color:#6aa8ff; font-weight:600; }
+  .json-body .jstr, .json-body .jval{ color:var(--text-muted); }
+
+  .run-waterfall{
+    background:var(--card-alt); border:1px solid var(--border-strong);
+    border-radius:var(--r-card); padding:14px 18px 12px; flex:0 0 auto;
+  }
+  .wf-head{ font-size:12.5px; font-weight:700; color:var(--text); margin-bottom:12px; }
+  .wf-row{ display:flex; align-items:center; gap:10px; margin-bottom:9px; }
+  .wf-row:last-child{ margin-bottom:0; }
+  .wf-label{ font-size:11px; color:var(--text-muted); min-width:140px; flex:0 0 auto; }
+  .wf-track{ flex:1 1 auto; height:8px; background:var(--border); border-radius:4px; position:relative; overflow:hidden; }
+  .wf-bar{ position:absolute; top:0; bottom:0; border-radius:4px; background:var(--blue); }
+  .wf-bar.amber{ background:var(--amber); }
+  .wf-bar.chat{ background:#8a8a90; }
+  .wf-lat{ font-size:10.5px; color:var(--text-meta); min-width:44px; text-align:right; flex:0 0 auto; font-family:var(--font-mono); }
+
+  /* ============ ENVIRONMENTS VIEW ============ */
+  .envs-wrap{
+    flex:1 1 auto; min-height:0; overflow:auto;
+    padding:20px 24px 24px;
+    display:flex; flex-direction:column; gap:16px;
+  }
+  .envs-head{ display:flex; align-items:center; justify-content:space-between; flex:0 0 auto; }
+  .envs-title{ font-size:14px; font-weight:700; color:var(--text); }
+  .ghost-btn{
+    display:inline-flex; align-items:center; gap:6px;
+    height:30px; padding:0 12px; border-radius:8px;
+    background:var(--card-inset); border:1px solid var(--border-strong);
+    color:var(--text-secondary); font-size:12px; font-weight:600; cursor:default;
+  }
+  .ghost-btn svg{ width:12px; height:12px; }
+  .envs-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; flex:0 0 auto; }
+  .env-card{
+    background:var(--card-alt); border:1px solid var(--border-strong);
+    border-radius:var(--r-card); padding:14px 16px;
+  }
+  .env-card.active-env{ border-color:rgba(43,127,255,0.45); box-shadow:0 0 0 1px rgba(43,127,255,0.15); }
+  .env-card-head{
+    display:flex; align-items:center; gap:7px;
+    font-family:var(--font-mono); font-size:12px; font-weight:700; color:var(--text);
+    margin-bottom:10px;
+  }
+  .env-dot{ width:7px; height:7px; border-radius:50%; background:var(--success-bright); box-shadow:0 0 6px 1px rgba(5,223,114,0.45); flex:0 0 auto; }
+  .env-dot.dim{ background:var(--text-meta); box-shadow:none; }
+  .env-row{ display:flex; align-items:center; gap:8px; padding:7px 0; border-top:1px solid var(--border); }
+  .env-card-head + .env-row{ border-top:none; }
+  .env-key{ font-size:10.5px; color:var(--text-meta); flex:0 0 auto; min-width:98px; }
+  .env-val{ font-size:11px; color:var(--text-secondary); flex:1 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .env-eye{ color:var(--text-muted); flex:0 0 auto; display:flex; }
+  .env-eye svg{ width:12px; height:12px; }
+
+  /* ============ STEP LIBRARY VIEW (canvas + overlay) ============ */
+  .view-library{ flex-direction:row; }
+  .lib-backdrop{
+    position:absolute; inset:0;
+    background-image: radial-gradient(rgba(255,255,255,0.09) 1px, transparent 1.2px);
+    background-size: 22px 22px;
+    background-position: 4px 4px;
+    opacity:0.4;
+  }
+  .node-ghost{
+    position:absolute;
+    background:var(--card-alt); border:1px solid var(--border-strong);
+    border-radius:var(--r-card); padding:11px 13px;
+  }
+  .node-ghost-title{ font-size:12.5px; font-weight:600; color:var(--text-secondary); }
+  .lib-panel{
+    position:relative; z-index:2; flex:0 0 300px;
+    background:var(--card); border-right:1px solid var(--border-md);
+    padding:16px 16px 12px;
+    display:flex; flex-direction:column; gap:12px;
+    box-shadow:24px 0 48px -24px rgba(0,0,0,0.6);
+  }
+  .lib-panel-title{ font-size:13px; font-weight:700; color:var(--text); flex:0 0 auto; }
+  .lib-search{
+    display:flex; align-items:center; gap:8px;
+    height:32px; padding:0 10px; flex:0 0 auto;
+    background:var(--card-inset); border:1px solid var(--border-strong); border-radius:8px;
+    color:var(--text-muted);
+  }
+  .lib-search svg{ width:13px; height:13px; flex:0 0 auto; }
+  .lib-search-text{ font-size:12px; color:var(--text-secondary); font-family:var(--font-mono); }
+  .lib-caret{ width:1.5px; height:12px; background:var(--cyan-bright); animation:caretBlink 0.9s step-end infinite; }
+  .lib-results{ display:flex; flex-direction:column; gap:2px; overflow:auto; min-height:0; }
+  .lib-row{ display:flex; align-items:center; gap:10px; padding:8px 6px; border-radius:8px; }
+  .lib-row-name{ font-size:12px; font-weight:600; color:var(--text); }
+  .lib-row-desc{ font-size:10.5px; color:var(--text-meta); margin-top:1px; }
+
+  /* ============ ASSISTANT PANEL ============ */
+  .assistant{
+    flex:0 0 272px;
+    background:var(--card);
+    border-left:1px solid var(--border-md);
+    display:flex; flex-direction:column;
+    padding:16px 14px;
+    gap:12px;
+    z-index:3;
+    min-height:0;
+    overflow:hidden;
+  }
+  .assistant-head{ display:flex; align-items:center; gap:10px; flex:0 0 auto; }
+  .assistant-avatar{
+    width:28px; height:28px; border-radius:8px;
+    background:var(--gradient);
+    display:flex; align-items:center; justify-content:center;
+    flex:0 0 auto;
+  }
+  .assistant-avatar svg{ width:14px; height:14px; }
+  .assistant-title{ font-size:12.5px; font-weight:700; color:var(--text); }
+  .assistant-sub{ font-size:10.5px; color:var(--text-meta); margin-top:1px; }
+
+  .fix-it{
+    flex:0 0 auto;
+    display:inline-flex; align-items:center; gap:5px;
+    align-self:flex-start;
+    padding:5px 10px;
+    border-radius:7px;
+    border:1px solid var(--border-strong);
+    background:var(--card-inset);
+    color:var(--text-secondary);
+    font-size:11px; font-weight:600;
+  }
+  .fix-it svg{ width:10px; height:10px; color:var(--cyan-bright); }
+
+  .assistant-msgs{
+    flex:1 1 auto;
+    min-height:0;
+    overflow:hidden;
+    display:flex; flex-direction:column;
+    gap:9px;
+  }
+  .msg{
+    background:var(--card-alt);
+    border:1px solid var(--border);
+    border-radius:11px;
+    padding:10px 12px;
+    font-size:12px; line-height:1.55;
+    color:var(--text-secondary);
+    animation:fadeInUp 0.5s ease-out both;
+  }
+  .msg:nth-child(1){ animation-delay:0.05s; }
+  .msg:nth-child(2){ animation-delay:0.18s; }
+  .msg:nth-child(3){ animation-delay:0.3s; }
+  @keyframes fadeInUp{
+    from{ opacity:0; transform:translateY(6px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+  .msg.typing .msg-text::after{
+    content:"";
+    display:inline-block;
+    width:2px; height:11px;
+    background:var(--cyan-bright);
+    margin-left:2px;
+    vertical-align:-2px;
+    animation:caretBlink 0.9s step-end infinite;
+  }
+  .msg.typing.done .msg-text::after{ display:none; }
+  @keyframes caretBlink{ 50%{ opacity:0; } }
+
+  /* ============ REDUCED MOTION ============ */
+  @media (prefers-reduced-motion: reduce){
+    *, *::before, *::after{
+      animation-duration:0.001ms !important;
+      animation-iteration-count:1 !important;
+      transition-duration:0.001ms !important;
+    }
+    .pulse{ opacity:0 !important; }
+    .pulse-ring{ opacity:0 !important; display:none; }
+    .status-pill .dot,
+    .status-chip.idle .chip-dot,
+    .junction-dot{ animation:none !important; opacity:0.85 !important; transform:none !important; }
+    .msg.typing .msg-text::after{ display:none; }
+  }
+
+  /* Node positions are fixed pixel coordinates (not %) anchored to the canvas's
+     top-left corner. This keeps card size and spacing constant at every viewport:
+     a full 1200-1440px embed shows the whole chain with room to spare on the right,
+     while a narrow card-crop simply clips the later nodes instead of the cards
+     compressing into an overlapping mess. The chain starts close to the rail on
+     purpose so 2-3 nodes always survive a left-anchored crop. PostRefunds is
+     widened to 222px so its longer status chip never needs to wrap. */
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="logo-mark">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" fill="#04101f"/></svg>
+      </div>
+      <span class="logo-word">Restflow</span>
+      <span class="crumb-sep">/</span>
+      <span class="crumb" id="crumb-mid">Flows</span>
+      <span class="crumb-sep" id="crumb-sep-2">/</span>
+      <span class="workflow-name" id="crumb-name">Refund notifications</span>
+      <span class="status-pill deployed"><span class="dot"></span>Deployed</span>
+    </div>
+    <div class="topbar-right">
+      <div class="icon-ghost" title="Search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      </div>
+      <div class="icon-ghost has-dot" title="Notifications">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>
+      </div>
+      <button class="btn-run">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        Run
+      </button>
+      <div class="avatar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+      </div>
+    </div>
+  </header>
+
+  <div class="body">
+
+    <nav class="rail">
+      <button class="rail-item active" title="Flows" data-view="flows library">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="6" r="2.4"/><circle cx="19" cy="6" r="2.4"/><circle cx="12" cy="18" r="2.4"/><path d="M7 7.5L11 16M17 7.5L13 16"/></svg>
+      </button>
+      <button class="rail-item" title="APIs" data-view="apis">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/><path d="M8 12h8"/></svg>
+      </button>
+      <button class="rail-item" title="Environments" data-view="envs">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg>
+      </button>
+      <button class="rail-item" title="Monitors" data-view="monitors run">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2 7 4-14 2 7h6"/></svg>
+      </button>
+    </nav>
+
+    <main class="canvas-wrap">
+      <div class="view-stack">
+
+        <!-- ============ VIEW 1: FLOWS CANVAS ============ -->
+        <section class="view view-flows active" data-view="flows">
+          <div class="canvas-toolbar">
+            <button>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              Add step
+            </button>
+            <button>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 19h14"/></svg>
+              Import API
+            </button>
+          </div>
+
+          <div class="canvas" id="canvas">
+            <svg class="connectors" id="connectors">
+              <path id="c1"/><path id="c2"/><path id="c3"/>
+            </svg>
+
+            <div class="pulse" id="p1"></div>
+            <div class="pulse" id="p2"></div>
+            <div class="pulse" id="p3"></div>
+
+            <div class="node trigger" id="n-webhook" style="left:44px; top:200px;">
+              <span class="pulse-ring"></span>
+              <div class="node-head">
+                <span class="node-icon icon-webhook">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg>
+                </span>
+                <span class="node-title">Webhook Trigger</span>
+              </div>
+              <div class="node-sub mono">Waiting for POST</div>
+              <span class="status-chip idle"><span class="chip-dot"></span>Active</span>
+            </div>
+
+            <div class="node action" id="n-postrefunds" style="left:296px; top:70px; width:222px;">
+              <div class="node-head">
+                <span class="node-icon icon-api">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17L17 7"/></svg>
+                </span>
+                <span class="node-title">PostRefunds</span>
+              </div>
+              <div class="node-sub mono"><span class="method post">POST</span>/api/stripe/refunds</div>
+              <span class="status-chip success"><span class="chip-check">&#10003;</span><span class="chip-label">Passed | retry 2</span><span class="chip-lat"><span class="latency" data-base="214">214</span>ms</span></span>
+            </div>
+
+            <div class="node action" id="n-getcharges" style="left:568px; top:70px;">
+              <div class="node-head">
+                <span class="node-icon icon-api">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 17H7V7"/><path d="M17 7L7 17"/></svg>
+                </span>
+                <span class="node-title">GetChargesCharge</span>
+              </div>
+              <div class="node-sub mono"><span class="method get">GET</span>/v1/charges</div>
+              <span class="status-chip success" id="chip-getcharges">
+                <span class="chip-spinner"></span>
+                <span class="chip-check">&#10003;</span><span class="chip-label">200 OK</span><span class="chip-lat"><span class="latency" data-base="96">96</span>ms</span>
+              </span>
+            </div>
+
+            <div class="node integration" id="n-slack" style="left:832px; top:176px;">
+              <div class="node-head">
+                <span class="node-icon icon-chat">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4A8.9 8.9 0 0 1 7 19l-4 1 1-3.6a8.3 8.3 0 0 1-1-4A8.4 8.4 0 0 1 12 3.5a8.5 8.5 0 0 1 9 8z"/></svg>
+                </span>
+                <span class="node-title">Slack: Post Message</span>
+              </div>
+              <div class="node-sub mono">#payments-alerts</div>
+              <span class="status-chip success"><span class="chip-check">&#10003;</span><span class="chip-label">200 OK</span><span class="chip-lat"><span class="latency" data-base="88">88</span>ms</span></span>
+            </div>
+          </div>
+
+          <div class="env-switch">
+            <button class="env-opt active">live</button>
+            <button class="env-opt">mocked</button>
+          </div>
+        </section>
+
+        <!-- ============ VIEW 2: MONITORS ============ -->
+        <section class="view view-monitors" data-view="monitors">
+          <div class="mon-wrap">
+            <div class="mon-stats">
+              <div class="stat-card">
+                <div class="stat-label">Success rate <span class="stat-window">24h</span></div>
+                <div class="stat-value">99.7%</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Runs today</div>
+                <div class="stat-value">1,284</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">p95 latency</div>
+                <div class="stat-value">214<span class="stat-unit">ms</span></div>
+              </div>
+            </div>
+
+            <div class="mon-chart-card">
+              <div class="mon-chart-head">
+                <span class="mon-chart-title">Latency</span>
+                <span class="mon-chart-sub">last 24h</span>
+              </div>
+              <svg class="mon-chart" viewBox="0 0 640 140" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="chartFillGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop class="grad-start" offset="0%"/>
+                    <stop class="grad-end" offset="100%"/>
+                  </linearGradient>
+                </defs>
+                <polygon id="mon-chart-area" class="chart-area" fill="url(#chartFillGrad)" points="0,100 53.33,92 106.67,102 160,86 213.33,94 266.67,78 320,90 373.33,98 426.67,92 480,84 533.33,90 586.67,82 640,88 640,140 0,140"/>
+                <polyline id="mon-chart-line" class="chart-line" pathLength="1" points="0,100 53.33,92 106.67,102 160,86 213.33,94 266.67,78 320,90 373.33,98 426.67,92 480,84 533.33,90 586.67,82 640,88"/>
+              </svg>
+              <div class="mon-chart-axis"><span>-24h</span><span>-12h</span><span>now</span></div>
+            </div>
+
+            <div class="mon-table-card">
+              <div class="mon-table-head">Recent runs</div>
+              <table class="mon-table">
+                <thead>
+                  <tr><th>Run</th><th>Workflow</th><th>Status</th><th>Latency</th><th>When</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="mono">run_8f2a1c</td>
+                    <td>Refund notifications</td>
+                    <td><span class="status-chip success"><span class="chip-check">&#10003;</span>Passed</span></td>
+                    <td class="mono">214ms</td>
+                    <td>2m ago</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">run_7d9e44</td>
+                    <td>Refund notifications</td>
+                    <td><span class="status-chip success"><span class="chip-check">&#10003;</span>Passed</span></td>
+                    <td class="mono">198ms</td>
+                    <td>9m ago</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">run_6c1b02</td>
+                    <td>Dispute alert sync</td>
+                    <td><span class="status-chip retried">Retried</span></td>
+                    <td class="mono">340ms</td>
+                    <td>22m ago</td>
+                  </tr>
+                  <tr>
+                    <td class="mono">run_5a8f91</td>
+                    <td>Refund notifications</td>
+                    <td><span class="status-chip success"><span class="chip-check">&#10003;</span>Passed</span></td>
+                    <td class="mono">205ms</td>
+                    <td>38m ago</td>
+                  </tr>
+                  <tr class="row-failed">
+                    <td class="mono">run_4e2c77</td>
+                    <td>Chargeback export</td>
+                    <td><span class="status-chip failed">Failed</span></td>
+                    <td class="mono">512ms</td>
+                    <td>1h ago</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ VIEW 3: CONNECTED APIs ============ -->
+        <section class="view view-apis" data-view="apis">
+          <div class="api-wrap">
+            <div class="api-head">
+              <div class="api-title">Connected APIs</div>
+              <div class="api-sub">4 connections</div>
+            </div>
+
+            <div class="api-list">
+              <div class="api-row">
+                <span class="api-dot"></span>
+                <span class="api-logo" style="background:linear-gradient(135deg,#635bff,#4b44e0);">S</span>
+                <div class="api-name">Stripe API</div>
+                <div class="api-meta">12 endpoints</div>
+                <span class="api-badge">OAuth2</span>
+                <span class="api-methods"><span class="method get">GET</span><span class="method post">POST</span></span>
+                <div class="api-called">last called 2m ago</div>
+              </div>
+              <div class="api-row">
+                <span class="api-dot"></span>
+                <span class="api-logo" style="background:linear-gradient(135deg,#ecb22e,#e01e5a);">#</span>
+                <div class="api-name">Slack Webhook</div>
+                <div class="api-meta">1 endpoint</div>
+                <span class="api-badge">Webhook</span>
+                <span class="api-methods"><span class="method post">POST</span></span>
+                <div class="api-called">last called 14m ago</div>
+              </div>
+              <div class="api-row">
+                <span class="api-dot"></span>
+                <span class="api-logo" style="background:linear-gradient(135deg,#2b7fff,#155dfc);">R</span>
+                <div class="api-name">Internal Refunds API</div>
+                <div class="api-meta">REST</div>
+                <span class="api-badge">Key auth</span>
+                <span class="api-methods"><span class="method get">GET</span><span class="method post">POST</span></span>
+                <div class="api-called">last called 41s ago</div>
+              </div>
+              <div class="api-row">
+                <span class="api-dot"></span>
+                <span class="api-logo" style="background:linear-gradient(135deg,#1a82e2,#00b8db);">G</span>
+                <div class="api-name">SendGrid</div>
+                <div class="api-meta">3 endpoints</div>
+                <span class="api-badge">API key</span>
+                <span class="api-methods"><span class="method post">POST</span></span>
+                <div class="api-called">last called 6m ago</div>
+              </div>
+            </div>
+
+            <div class="env-switch inline">
+              <button class="env-opt active">live</button>
+              <button class="env-opt">mocked</button>
+              <button class="env-opt">staging</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ VIEW 4: RUN INSPECTOR ============ -->
+        <section class="view view-run" data-view="run">
+          <div class="run-wrap">
+            <div class="run-head">
+              <div class="run-head-left">
+                <span class="run-id mono">#run_8f3k2p</span>
+                <span class="run-wf">Refund notifications</span>
+              </div>
+              <span class="status-chip success"><span class="chip-check">&#10003;</span>Passed</span>
+              <span class="run-total mono">612ms total</span>
+            </div>
+
+            <div class="run-row">
+              <div class="run-steps">
+                <div class="run-step">
+                  <span class="node-icon icon-webhook"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg></span>
+                  <div>
+                    <div class="run-step-name">Webhook Trigger</div>
+                    <div class="run-step-lat">4ms</div>
+                  </div>
+                  <span class="run-step-tick">&#10003;</span>
+                </div>
+                <div class="run-step">
+                  <span class="node-icon icon-api"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17L17 7"/></svg></span>
+                  <div>
+                    <div class="run-step-name">PostRefunds</div>
+                    <div class="run-step-lat">214ms</div>
+                  </div>
+                  <span class="run-step-tick">&#10003;</span>
+                </div>
+                <div class="run-step">
+                  <span class="node-icon icon-api"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 17H7V7"/><path d="M17 7L7 17"/></svg></span>
+                  <div>
+                    <div class="run-step-name">GetChargesCharge</div>
+                    <div class="run-step-lat">96ms</div>
+                  </div>
+                  <span class="run-step-tick">&#10003;</span>
+                </div>
+                <div class="run-step">
+                  <span class="node-icon icon-chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4A8.9 8.9 0 0 1 7 19l-4 1 1-3.6a8.3 8.3 0 0 1-1-4A8.4 8.4 0 0 1 12 3.5a8.5 8.5 0 0 1 9 8z"/></svg></span>
+                  <div>
+                    <div class="run-step-name">Slack: Post Message</div>
+                    <div class="run-step-lat">88ms</div>
+                  </div>
+                  <span class="run-step-tick">&#10003;</span>
+                </div>
+              </div>
+
+              <div class="run-json">
+                <div class="json-card">
+                  <div class="json-card-head">Request</div>
+                  <pre class="json-body">{
+  <span class="jkey">"amount"</span>: <span class="jval">4200</span>,
+  <span class="jkey">"currency"</span>: <span class="jstr">"usd"</span>,
+  <span class="jkey">"charge"</span>: <span class="jstr">"ch_1P8x0dK2"</span>,
+  <span class="jkey">"reason"</span>: <span class="jstr">"requested_by_customer"</span>,
+  <span class="jkey">"metadata"</span>: {
+    <span class="jkey">"order_id"</span>: <span class="jstr">"ord_9931"</span>
+  }
+}</pre>
+                </div>
+                <div class="json-card">
+                  <div class="json-card-head">Response <span class="json-status">200</span></div>
+                  <pre class="json-body">{
+  <span class="jkey">"id"</span>: <span class="jstr">"re_3P8x0d"</span>,
+  <span class="jkey">"status"</span>: <span class="jval">200</span>,
+  <span class="jkey">"amount"</span>: <span class="jval">4200</span>,
+  <span class="jkey">"currency"</span>: <span class="jstr">"usd"</span>,
+  <span class="jkey">"charge"</span>: <span class="jstr">"ch_1P8x0dK2"</span>,
+  <span class="jkey">"created"</span>: <span class="jval">1735099120</span>
+}</pre>
+                </div>
+              </div>
+            </div>
+
+            <div class="run-waterfall">
+              <div class="wf-head">Timing waterfall</div>
+              <div class="wf-row"><span class="wf-label">Webhook Trigger</span><div class="wf-track"><div class="wf-bar amber" style="left:0%;width:3%;"></div></div><span class="wf-lat">4ms</span></div>
+              <div class="wf-row"><span class="wf-label">PostRefunds</span><div class="wf-track"><div class="wf-bar" style="left:4%;width:38%;"></div></div><span class="wf-lat">214ms</span></div>
+              <div class="wf-row"><span class="wf-label">GetChargesCharge</span><div class="wf-track"><div class="wf-bar" style="left:44%;width:18%;"></div></div><span class="wf-lat">96ms</span></div>
+              <div class="wf-row"><span class="wf-label">Slack: Post Message</span><div class="wf-track"><div class="wf-bar chat" style="left:64%;width:16%;"></div></div><span class="wf-lat">88ms</span></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ VIEW 5: ENVIRONMENTS ============ -->
+        <section class="view view-envs" data-view="envs">
+          <div class="envs-wrap">
+            <div class="envs-head">
+              <div class="envs-title">Environments</div>
+              <button class="ghost-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v5h5"/><path d="M20 20v-5h-5"/><path d="M4 9a8 8 0 0 1 14-4.7L20 6"/><path d="M20 15a8 8 0 0 1-14 4.7L4 18"/></svg>
+                Sync from .env
+              </button>
+            </div>
+            <div class="envs-grid">
+              <div class="env-card active-env">
+                <div class="env-card-head"><span class="env-dot"></span>live</div>
+                <div class="env-row"><span class="env-key mono">STRIPE_KEY</span><span class="env-val mono">&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;4242</span><span class="env-eye"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div>
+                <div class="env-row"><span class="env-key mono">BASE_URL</span><span class="env-val mono">api.stripe.com</span></div>
+                <div class="env-row"><span class="env-key mono">WEBHOOK_SECRET</span><span class="env-val mono">&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;</span><span class="env-eye"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div>
+                <div class="env-row"><span class="env-key mono">RETRY_LIMIT</span><span class="env-val mono">3</span></div>
+                <div class="env-row"><span class="env-key mono">TIMEOUT_MS</span><span class="env-val mono">30000</span></div>
+              </div>
+              <div class="env-card">
+                <div class="env-card-head"><span class="env-dot dim"></span>mocked</div>
+                <div class="env-row"><span class="env-key mono">STRIPE_KEY</span><span class="env-val mono">&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;mock</span><span class="env-eye"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div>
+                <div class="env-row"><span class="env-key mono">BASE_URL</span><span class="env-val mono">mock.restflow.dev</span></div>
+                <div class="env-row"><span class="env-key mono">WEBHOOK_SECRET</span><span class="env-val mono">&bull;&bull;&bull;&bull;&bull;&bull;</span><span class="env-eye"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div>
+                <div class="env-row"><span class="env-key mono">RETRY_LIMIT</span><span class="env-val mono">1</span></div>
+                <div class="env-row"><span class="env-key mono">TIMEOUT_MS</span><span class="env-val mono">5000</span></div>
+              </div>
+              <div class="env-card">
+                <div class="env-card-head"><span class="env-dot dim"></span>staging</div>
+                <div class="env-row"><span class="env-key mono">STRIPE_KEY</span><span class="env-val mono">&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;7781</span><span class="env-eye"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div>
+                <div class="env-row"><span class="env-key mono">BASE_URL</span><span class="env-val mono">staging-api.stripe.com</span></div>
+                <div class="env-row"><span class="env-key mono">WEBHOOK_SECRET</span><span class="env-val mono">&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;</span><span class="env-eye"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg></span></div>
+                <div class="env-row"><span class="env-key mono">RETRY_LIMIT</span><span class="env-val mono">3</span></div>
+                <div class="env-row"><span class="env-key mono">TIMEOUT_MS</span><span class="env-val mono">15000</span></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ VIEW 6: STEP LIBRARY (canvas + add-step overlay) ============ -->
+        <section class="view view-library" data-view="library">
+          <div class="lib-backdrop">
+            <div class="node-ghost" style="left:44px; top:200px; width:196px;"><span class="node-ghost-title">Webhook Trigger</span></div>
+            <div class="node-ghost" style="left:296px; top:70px; width:222px;"><span class="node-ghost-title">PostRefunds</span></div>
+            <div class="node-ghost" style="left:568px; top:70px; width:196px;"><span class="node-ghost-title">GetChargesCharge</span></div>
+            <div class="node-ghost" style="left:832px; top:176px; width:196px;"><span class="node-ghost-title">Slack: Post Message</span></div>
+          </div>
+          <div class="lib-panel">
+            <div class="lib-panel-title">Add a step</div>
+            <div class="lib-search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+              <span class="lib-search-text">http</span><span class="lib-caret"></span>
+            </div>
+            <div class="lib-results">
+              <div class="lib-row">
+                <span class="node-icon icon-api"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17L17 7"/></svg></span>
+                <div><div class="lib-row-name">HTTP Request</div><div class="lib-row-desc">Call any REST endpoint</div></div>
+              </div>
+              <div class="lib-row">
+                <span class="node-icon icon-webhook"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg></span>
+                <div><div class="lib-row-name">Webhook Trigger</div><div class="lib-row-desc">Start a flow from an inbound POST</div></div>
+              </div>
+              <div class="lib-row">
+                <span class="node-icon icon-api"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h10M4 17h13"/></svg></span>
+                <div><div class="lib-row-name">Transform JSON</div><div class="lib-row-desc">Reshape a payload with a mapper</div></div>
+              </div>
+              <div class="lib-row">
+                <span class="node-icon icon-chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></span>
+                <div><div class="lib-row-name">Condition</div><div class="lib-row-desc">Branch the flow on a rule</div></div>
+              </div>
+              <div class="lib-row">
+                <span class="node-icon icon-webhook"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></span>
+                <div><div class="lib-row-name">Delay</div><div class="lib-row-desc">Pause before the next step</div></div>
+              </div>
+              <div class="lib-row">
+                <span class="node-icon icon-chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4A8.9 8.9 0 0 1 7 19l-4 1 1-3.6a8.3 8.3 0 0 1-1-4A8.4 8.4 0 0 1 12 3.5a8.5 8.5 0 0 1 9 8z"/></svg></span>
+                <div><div class="lib-row-name">Slack Message</div><div class="lib-row-desc">Post to a channel or DM</div></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+    <aside class="assistant">
+      <div class="assistant-head">
+        <div class="assistant-avatar">
+          <svg viewBox="0 0 24 24" fill="#04101f"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/></svg>
+        </div>
+        <div>
+          <div class="assistant-title">Restflow Assistant</div>
+          <div class="assistant-sub">Watching this workflow</div>
+        </div>
+      </div>
+
+      <div class="fix-it">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/></svg>
+        Fix it
+      </div>
+
+      <div class="assistant-msgs">
+        <div class="msg"><span class="msg-text">Fixed. Both Stripe nodes now send Authorization: Bearer with your connected credential &middot; the key is no longer in the URL.</span></div>
+        <div class="msg"><span class="msg-text">Connected to Slack as #payments-alerts. Drag from the refund node's success port to wire it into this step.</span></div>
+        <div class="msg typing" id="typing-msg"><span class="msg-text" id="typing-text">First test hit a transient 503 from Stripe &middot; retried automatically and passed on attempt 2 (214ms). Applied the response shape to the next step.</span></div>
+      </div>
+    </aside>
+
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var canvas = document.getElementById('canvas');
+  var svg = document.getElementById('connectors');
+
+  var nodes = {
+    webhook: document.getElementById('n-webhook'),
+    postrefunds: document.getElementById('n-postrefunds'),
+    getcharges: document.getElementById('n-getcharges'),
+    slack: document.getElementById('n-slack')
+  };
+
+  var connectors = [
+    { from:'webhook', to:'postrefunds', path:document.getElementById('c1'), pulse:document.getElementById('p1'), color:'cyan' },
+    { from:'postrefunds', to:'getcharges', path:document.getElementById('c2'), pulse:document.getElementById('p2'), color:'green' },
+    { from:'getcharges', to:'slack', path:document.getElementById('c3'), pulse:document.getElementById('p3'), color:'green' }
+  ];
+
+  var junctionEls = connectors.map(function(c){
+    var d = document.createElement('div');
+    d.className = 'junction-dot' + (c.color === 'green' ? ' green' : '');
+    canvas.appendChild(d);
+    return d;
+  });
+
+  function edgePoint(el, side){
+    var r = el.getBoundingClientRect();
+    var c = canvas.getBoundingClientRect();
+    return {
+      x: side === 'right' ? (r.right - c.left) : (r.left - c.left),
+      y: (r.top - c.top) + r.height / 2
+    };
+  }
+
+  function layout(){
+    var c = canvas.getBoundingClientRect();
+    if (c.width === 0 || c.height === 0) return;
+    svg.setAttribute('width', c.width);
+    svg.setAttribute('height', c.height);
+    svg.setAttribute('viewBox', '0 0 ' + c.width + ' ' + c.height);
+
+    connectors.forEach(function(conn, i){
+      var a = edgePoint(nodes[conn.from], 'right');
+      var b = edgePoint(nodes[conn.to], 'left');
+      var dx = (b.x - a.x) * 0.5;
+      var d = 'M ' + a.x + ' ' + a.y + ' C ' + (a.x + dx) + ' ' + a.y + ', ' + (b.x - dx) + ' ' + b.y + ', ' + b.x + ' ' + b.y;
+      conn.path.setAttribute('d', d);
+      conn.pulse.style.offsetPath = "path('" + d + "')";
+
+      // approximate midpoint on the cubic bezier at t=0.5
+      var mx = 0.125 * a.x + 0.375 * (a.x + dx) + 0.375 * (b.x - dx) + 0.125 * b.x;
+      var my = 0.125 * a.y + 0.375 * a.y + 0.375 * b.y + 0.125 * b.y;
+      junctionEls[i].style.left = mx + 'px';
+      junctionEls[i].style.top = my + 'px';
+    });
+  }
+
+  window.addEventListener('resize', layout);
+  layout();
+  requestAnimationFrame(layout);
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(layout);
+  }
+  setTimeout(layout, 300);
+
+  if (!reduce) {
+    // periodic node cycle: GetChargesCharge briefly shows a spinner, then re-settles
+    // with a fresh latency figure, timed to roughly when the relay pulse arrives.
+    var chip = document.getElementById('chip-getcharges');
+    var chipLatency = chip.querySelector('.latency');
+
+    function jitter(el, min, max, spread){
+      var base = parseInt(el.getAttribute('data-base'), 10);
+      var val = Math.round(base + (Math.random() - 0.5) * spread);
+      val = Math.max(min, Math.min(max, val));
+      el.textContent = val;
+    }
+
+    function cycle(){
+      chip.classList.remove('success-flash');
+      chip.classList.add('running');
+      setTimeout(function(){
+        chip.classList.remove('running');
+        jitter(chipLatency, 78, 132, 30);
+        chip.classList.add('success-flash');
+      }, 850);
+    }
+    setInterval(cycle, 3000);
+    setTimeout(cycle, 1300);
+
+    // gentle latency jitter on the two settled nodes, independent cadence
+    var otherLatencies = document.querySelectorAll('#n-postrefunds .latency, #n-slack .latency');
+    setInterval(function(){
+      otherLatencies.forEach(function(el){ jitter(el, 60, 260, 22); });
+    }, 4600);
+
+    // one-time typewriter for the last assistant message
+    var typingWrap = document.getElementById('typing-msg');
+    var typingEl = document.getElementById('typing-text');
+    var full = typingEl.textContent;
+    typingEl.textContent = '';
+    var i = 0;
+    function typeStep(){
+      if (i <= full.length){
+        typingEl.textContent = full.slice(0, i);
+        i++;
+        setTimeout(typeStep, 12 + Math.random() * 20);
+      } else {
+        typingWrap.classList.add('done');
+      }
+    }
+    setTimeout(typeStep, 950);
+  } else {
+    document.getElementById('typing-msg').classList.add('done');
+  }
+
+  // ============ MULTI-VIEW PRODUCT TOUR ============
+  // Cross-fades between the Flows canvas, a Monitors dashboard, and a
+  // Connected APIs list, looping forever. Reduced motion shows the Flows
+  // canvas only, statically (handled by never starting the tour below).
+  var viewEls = Array.prototype.slice.call(document.querySelectorAll('.view'));
+  var railEls = Array.prototype.slice.call(document.querySelectorAll('.rail-item[data-view]'));
+  var crumbMid = document.getElementById('crumb-mid');
+  var crumbSep2 = document.getElementById('crumb-sep-2');
+  var crumbName = document.getElementById('crumb-name');
+  var chartLine = document.getElementById('mon-chart-line');
+  var chartArea = document.getElementById('mon-chart-area');
+
+  function setBreadcrumb(name){
+    if (name === 'flows' || name === 'library'){
+      crumbMid.textContent = 'Flows';
+      crumbMid.style.display = '';
+      crumbSep2.style.display = '';
+      crumbName.textContent = 'Refund notifications';
+    } else if (name === 'monitors'){
+      crumbMid.style.display = 'none';
+      crumbSep2.style.display = 'none';
+      crumbName.textContent = 'Monitors';
+    } else if (name === 'apis'){
+      crumbMid.style.display = 'none';
+      crumbSep2.style.display = 'none';
+      crumbName.textContent = 'Connected APIs';
+    } else if (name === 'run'){
+      crumbMid.textContent = 'Runs';
+      crumbMid.style.display = '';
+      crumbSep2.style.display = '';
+      crumbName.textContent = '#run_8f3k2p';
+    } else if (name === 'envs'){
+      crumbMid.style.display = 'none';
+      crumbSep2.style.display = 'none';
+      crumbName.textContent = 'Environments';
+    }
+  }
+
+  function railMatches(el, name){
+    var tokens = (el.getAttribute('data-view') || '').split(/\s+/);
+    return tokens.indexOf(name) !== -1;
+  }
+
+  function showView(name){
+    viewEls.forEach(function(el){ el.classList.toggle('active', el.getAttribute('data-view') === name); });
+    railEls.forEach(function(el){ el.classList.toggle('active', railMatches(el, name)); });
+    setBreadcrumb(name);
+    if (name === 'monitors' && chartLine && chartArea){
+      chartLine.classList.remove('drawn');
+      chartArea.classList.remove('drawn');
+      void chartLine.getBoundingClientRect(); // force reflow so the transition re-triggers
+      setTimeout(function(){
+        chartLine.classList.add('drawn');
+        chartArea.classList.add('drawn');
+      }, 60);
+    }
+  }
+
+  if (!reduce) {
+    var order = ['flows', 'monitors', 'apis', 'run', 'envs', 'library'];
+    var durations = { flows: 8000, monitors: 6000, apis: 6000, run: 6000, envs: 6000, library: 8000 };
+    var vi = 0;
+    (function tourTick(){
+      var name = order[vi];
+      showView(name);
+      setTimeout(function(){
+        vi = (vi + 1) % order.length;
+        tourTick();
+      }, durations[name]);
+    })();
+  } else {
+    setBreadcrumb('flows');
+  }
+})();
+</script>
+</body>
+</html>
