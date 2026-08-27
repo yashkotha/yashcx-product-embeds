@@ -1,0 +1,1054 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<script>try{if(localStorage.getItem('arkk.nav.collapsed')==='1')document.documentElement.dataset.navCollapsed='1';}catch(e){}</script>
+<script>
+  /* Trailing-slash self-heal: under http(s) clean-URL serving, this document can be
+     reached at a slashless directory URL (e.g. /arkk instead of /arkk/) - via a bare
+     bookmark, an iframe embed, or a server 301 chain that strips "/index". At a
+     slashless URL every relative asset (shared.css, arkk.js, nav links) resolves
+     against the parent path instead of this directory and 404s. Bail out of this
+     doomed document and reload at the slash-terminated URL before any relative
+     resource below is requested. file:// is untouched - there a bare directory
+     open is a listing page, never this document, so the condition never fires. */
+  (function () {
+    var p = location.pathname;
+    if (location.protocol !== 'file:' && p.charAt(p.length - 1) !== '/' && !/\.[^\/]+$/.test(p)) {
+      location.replace(p + '/' + location.search + location.hash);
+    }
+  })();
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Overview | Arkk Transfer Pricing</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  /* Chrome reconciliation: left sidebar is the ONE navigation; the topbar
+     segmented tab strip duplicated it and is removed. Collapse the topbar
+     grid from 3 tracks (nav | search | actions) to 2 (search | actions)
+     without touching shared.css (LAW, never edited). */
+  .topbar { grid-template-columns: 1fr auto !important; }
+</style>
+<link rel="stylesheet" href="arkk-nav.css" />
+<script defer src="arkk-data.js"></script>
+<script defer src="arkk.js"></script>
+<script defer src="arkk-nav.js"></script>
+<script defer src="arkk-chrome.js"></script>
+<style>
+  /* Page-local layout */
+  .hero {
+    display: grid;
+    grid-template-columns: 1.15fr 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 16px;
+    align-items: stretch;
+  }
+  .hero-card {
+    gap: 12px !important;
+    padding: 16px 18px 14px !important;
+  }
+  .score-row { padding: 0 !important; }
+  .phases { gap: 6px !important; padding: 2px 0 !important; }
+  .phase { padding: 0; }
+  .hero-cta { margin-top: auto; padding-top: 4px; }
+  /* Phase grid tightened for narrower card */
+  .phase { grid-template-columns: 76px 1fr 36px !important; gap: 10px !important; }
+  .hero-card {
+    background: linear-gradient(180deg, oklch(100% 0 0 / 0.7), oklch(100% 0 0 / 0.4));
+    backdrop-filter: saturate(160%) blur(24px);
+    -webkit-backdrop-filter: saturate(160%) blur(24px);
+    border: 1px solid oklch(100% 0 0 / 0.7);
+    border-radius: 18px;
+    padding: 22px 24px 20px;
+    display: flex; flex-direction: column;
+    gap: 18px;
+    overflow: hidden;
+    position: relative;
+    box-shadow:
+      inset 0 1px 0 oklch(100% 0 0 / 0.5),
+      0 10px 30px oklch(54% 0.19 254 / 0.05),
+      0 1px 2px oklch(20% 0.02 254 / 0.03);
+  }
+  .hero-card::before {
+    content: ""; position: absolute; right: -120px; top: -120px;
+    width: 340px; height: 340px; border-radius: 50%;
+    background: radial-gradient(closest-side, oklch(94% 0.06 162 / 0.55), transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .hero-card::after {
+    content: ""; position: absolute; left: -80px; bottom: -120px;
+    width: 280px; height: 280px; border-radius: 50%;
+    background: radial-gradient(closest-side, oklch(94% 0.05 254 / 0.4), transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .hero-card > * { position: relative; z-index: 1; }
+
+  /* Score row — ring + caption with inline delta */
+  .score-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 0;
+  }
+  .score-ring { position: relative; width: 68px; height: 68px; flex-shrink: 0; }
+  .score-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .score-ring .track { stroke: oklch(92% 0.008 254); }
+  .score-ring .fill {
+    stroke: var(--brand);
+    stroke-linecap: round;
+    filter: drop-shadow(0 0 6px oklch(54% 0.19 254 / 0.35));
+  }
+  .score-caption {
+    flex: 1; min-width: 0;
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .score-caption .lbl-row {
+    display: flex; align-items: center; gap: 8px;
+    font-family: "Geist Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-4);
+    /* QA fix: "Period score" and the delta chip were each breaking onto a
+       second line ("PERIOD / SCORE", "+14 vs / Q3") once the ring pushed
+       this row narrower than their text. Both must stay one line each. */
+    white-space: nowrap;
+  }
+  .score-caption .chip-delta {
+    display: inline-flex; align-items: center;
+    padding: 2px 7px;
+    border-radius: 999px;
+    font-family: "Geist Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--mint-ink);
+    background: var(--mint-soft);
+    border: 1px solid var(--mint-line);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .score-num {
+    font-family: "Geist", sans-serif;
+    font-size: 32px;
+    line-height: 1;
+    letter-spacing: -0.035em;
+    font-weight: 500;
+    color: var(--ink);
+    display: flex; align-items: baseline; gap: 3px;
+    font-feature-settings: "tnum";
+  }
+  .score-num .pct { font-size: 14px; color: var(--ink-3); font-weight: 400; }
+  .score-caption .desc {
+    font-size: 12px;
+    color: var(--ink-3);
+    margin-top: 1px;
+  }
+
+  /* Phase rows */
+  .phases {
+    display: grid;
+    gap: 7px;
+    padding: 4px 0;
+  }
+  .phase {
+    display: grid;
+    grid-template-columns: 88px 1fr 40px;
+    align-items: center;
+    gap: 12px;
+    font-size: 12px;
+  }
+  .phase-name {
+    color: var(--ink-2);
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .phase-track {
+    height: 6px;
+    background: oklch(100% 0 0 / 0.5);
+    border-radius: 3px;
+    overflow: hidden;
+    border: 1px solid oklch(100% 0 0 / 0.6);
+    box-shadow: inset 0 1px 2px oklch(20% 0.02 254 / 0.05);
+  }
+  .phase-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, var(--brand-2), var(--brand));
+    box-shadow: 0 0 6px oklch(54% 0.19 254 / 0.3);
+  }
+  .phase.done .phase-fill {
+    background: linear-gradient(90deg, oklch(50% 0.14 162), var(--mint));
+    box-shadow: 0 0 6px oklch(58% 0.13 162 / 0.35);
+  }
+  .phase.todo .phase-fill { width: 0 !important; }
+  .phase-pct {
+    font-family: "Geist Mono", monospace;
+    font-size: 11px;
+    color: var(--ink);
+    text-align: right;
+  }
+  .phase.done .phase-pct { color: var(--mint-ink); }
+  .phase.todo .phase-pct { color: var(--ink-4); }
+
+  /* Hero actions */
+  /* QA fix: "Resume mapping" + "View runbook" were each wrapping their own
+     label to 2 lines to fit side by side in this narrow (1.15fr) hero
+     column. Buttons must never wrap their own text (shared.css .btn is
+     nowrap) - wrap the ROW instead so a second button drops to its own
+     line, whole, if there isn't room beside the first. */
+  .hero-cta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
+
+  /* Right side metric cards — glass with rich chart */
+  .hero-side { display: grid; grid-template-rows: auto auto; gap: 12px; align-content: start; }
+  .metric-card {
+    background: linear-gradient(180deg, oklch(100% 0 0 / 0.7), oklch(100% 0 0 / 0.4));
+    backdrop-filter: saturate(160%) blur(20px);
+    -webkit-backdrop-filter: saturate(160%) blur(20px);
+    border: 1px solid oklch(100% 0 0 / 0.6);
+    border-radius: 14px;
+    padding: 12px 16px 10px;
+    display: flex; flex-direction: column;
+    gap: 4px;
+    position: relative;
+    overflow: hidden;
+    box-shadow:
+      inset 0 1px 0 oklch(100% 0 0 / 0.5),
+      0 8px 24px oklch(54% 0.19 254 / 0.04);
+  }
+  .metric-card::before {
+    content: ""; position: absolute; right: -60px; top: -60px;
+    width: 160px; height: 160px; border-radius: 50%;
+    background: radial-gradient(closest-side, oklch(94% 0.05 162 / 0.4), transparent 70%);
+    pointer-events: none;
+  }
+  .metric-card.coral::before {
+    background: radial-gradient(closest-side, oklch(95% 0.06 25 / 0.35), transparent 70%);
+  }
+  .metric-card > * { position: relative; }
+
+  .m-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px;
+  }
+  .m-label {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 12px;
+    color: var(--ink-3);
+    font-weight: 500;
+  }
+  .m-label .ico-sm { color: var(--brand); }
+  .metric-card.coral .m-label .ico-sm { color: var(--coral); }
+  .metric-card.mint  .m-label .ico-sm { color: var(--mint-ink); }
+
+  .m-delta {
+    display: inline-flex; align-items: center;
+    padding: 2px 8px;
+    font-family: "Geist Mono", monospace;
+    font-size: 10px;
+    border-radius: 999px;
+    background: oklch(100% 0 0 / 0.6);
+    border: 1px solid var(--mint-line);
+    color: var(--mint-ink);
+    box-shadow: inset 0 1px 0 oklch(100% 0 0 / 0.5);
+  }
+  .m-delta.down {
+    color: var(--coral-ink);
+    border-color: var(--coral-line);
+  }
+
+  .m-value {
+    font-family: "Geist", sans-serif;
+    font-size: 26px;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    font-weight: 500;
+    color: var(--ink);
+    display: flex; align-items: baseline; gap: 4px;
+    margin-top: 2px;
+    font-feature-settings: "tnum";
+  }
+  .m-value .m-unit { font-size: 12px; color: var(--ink-3); font-weight: 400; letter-spacing: 0; }
+
+  .m-meta { font-size: 11px; color: var(--ink-3); margin-top: -2px; }
+
+  /* The chart — quarterly bars with target band */
+  .m-chart {
+    margin-top: 10px;
+    flex: 1;
+    min-height: 110px;
+    display: flex; flex-direction: column;
+    gap: 8px;
+  }
+  .m-bars {
+    flex: 1;
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    align-items: end;
+    padding: 4px 0 6px;
+    min-height: 70px;
+  }
+  /* Target reference line — drawn via overlay */
+  .m-bars-target {
+    position: absolute;
+    left: 0; right: 0;
+    height: 0;
+    border-top: 1px dashed oklch(70% 0.01 254);
+    pointer-events: none;
+    z-index: 1;
+  }
+  .m-bars-target .lbl {
+    position: absolute;
+    right: 0;
+    top: -16px;
+    font-family: "Geist Mono", monospace;
+    font-size: 9px;
+    color: var(--ink-3);
+    background: oklch(100% 0 0 / 0.6);
+    padding: 1px 5px;
+    border-radius: 3px;
+    letter-spacing: 0;
+  }
+  .m-bar-col {
+    height: 100%;
+    display: flex; flex-direction: column;
+    justify-content: flex-end;
+    align-items: stretch;
+  }
+  .m-bar {
+    width: 100%;
+    border-radius: 4px 4px 2px 2px;
+    background: oklch(90% 0.008 254);
+    transition: background .15s;
+    position: relative;
+    z-index: 2;
+  }
+  .m-bar-col.current .m-bar {
+    background: linear-gradient(180deg, var(--brand-2), var(--brand));
+    box-shadow: 0 -2px 8px oklch(54% 0.19 254 / 0.25);
+  }
+  .m-chart.coral .m-bar-col.current .m-bar {
+    background: linear-gradient(180deg, oklch(58% 0.19 25), var(--coral));
+    box-shadow: 0 -2px 8px oklch(64% 0.18 25 / 0.30);
+  }
+  .m-chart.mint .m-bar-col.current .m-bar {
+    background: linear-gradient(180deg, oklch(60% 0.14 162), var(--mint));
+    box-shadow: 0 -2px 8px oklch(72% 0.13 162 / 0.35);
+  }
+
+  .m-axis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    font-family: "Geist Mono", monospace;
+    font-size: 10px;
+    color: var(--ink-4);
+    text-align: center;
+    padding-top: 6px;
+    border-top: 1px solid var(--line-2);
+  }
+  .m-axis span { display: flex; flex-direction: column; gap: 1px; align-items: center; }
+  .m-axis span .v {
+    font-size: 11px;
+    color: var(--ink-2);
+    font-weight: 500;
+  }
+  .m-axis span.current { color: var(--ink); font-weight: 500; }
+  .m-axis span.current .v { color: var(--ink); }
+
+  .stats {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .grid-2-1 {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr;
+    gap: 16px;
+  }
+
+  .grid-1-1 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .quarters {
+    display: flex; gap: 6px; flex-wrap: wrap;
+  }
+  .q-tab {
+    padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink-2); font-size: 12px;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .q-tab.active { background: var(--ink); color: oklch(98% 0.005 254); border-color: transparent; }
+  .q-tab .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--mint); }
+
+  .next-actions {
+    display: grid; gap: 8px;
+  }
+  .next-action {
+    display: grid;
+    grid-template-columns: 32px 1fr auto;
+    gap: 12px; align-items: center;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--bg-3);
+    transition: background .15s, border-color .15s;
+  }
+  .next-action:hover { background: var(--surface); border-color: oklch(82% 0.04 254); }
+  .next-action .ico-wrap {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: var(--brand-soft); color: var(--brand);
+    display: grid; place-items: center;
+  }
+  .next-action .ico-wrap.mint { background: var(--mint-soft); color: var(--mint-ink); }
+  .next-action .ico-wrap.peach { background: var(--peach-soft); color: var(--peach-ink); }
+  .next-action .text { font-size: 13px; }
+  .next-action .text b { color: var(--ink); font-weight: 500; }
+  .next-action .text .sub { color: var(--ink-3); font-size: 12px; }
+  .next-action .arr { color: var(--ink-3); }
+
+  .leaderboard td .num.big { font-size: 14px; color: var(--ink); font-weight: 500; }
+
+  /* Interaction-layer additions (v6) - soft-fill/lift only, no new strokes */
+  .q-tab { transition: background var(--dur-micro) var(--ease-house), color var(--dur-micro) var(--ease-house); }
+  .q-tab:not(.active):hover { background: var(--bg-2); }
+  .next-action:hover .arr { transform: translateX(2px); transition: transform var(--dur-micro) var(--ease-house); }
+  .next-action .arr { transition: transform var(--dur-micro) var(--ease-house); }
+  .metric-card:hover { transform: translateY(-1px); transition: transform var(--dur-ui) var(--ease-house); }
+  .leaderboard tbody tr:hover .row-spark path.line { stroke-width: 1.75; transition: stroke-width var(--dur-micro) var(--ease-house); }
+  .leaderboard tbody tr { cursor: pointer; }
+  .leaderboard .name { transition: color var(--dur-micro) var(--ease-house); }
+  .leaderboard tbody tr:hover .name { color: var(--brand-2); }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Primary (dashboard) navigation -->
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <div class="logo">fs</div>
+      <button class="ws-switch">
+        Northgate
+        <svg class="ico-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l5 5 5-5"/></svg>
+      </button>
+    </div>
+    <div class="sidebar-section">
+      <a class="nav-item" href="./">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 9.5V21h5v-7h4v7h5V9.5"/></svg>
+        <span class="nav-label">Dashboard</span>
+      </a>
+      <a class="nav-item" href="#" data-focus-search>
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <span class="nav-label">Search</span>
+        <span class="count">⌘K</span>
+      </a>
+      <a class="nav-item" href="#" data-quiet="Inbox">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l3-9h12l3 9v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1zM3 13h6l1 3h4l1-3h6"/></svg>
+        <span class="nav-label">Inbox</span>
+        <span class="count">3</span>
+      </a>
+    </div>
+    <div class="sidebar-section">
+      <div class="heading">Workspace</div>
+      <a class="nav-item active" href="./">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 9.5V21h5v-7h4v7h5V9.5"/></svg>
+        <span class="nav-label">Overview</span>
+      </a>
+      <a class="nav-item" href="matrix.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h6v6H4zM14 6h6v6h-6zM4 16h6v4H4zM14 16h6v4h-6z"/></svg>
+        <span class="nav-label">Cost matrix</span>
+      </a>
+      <a class="nav-item" href="transfer-pricing.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h14M14 5l3 3-3 3M21 16H7M10 19l-3-3 3-3"/></svg>
+        <span class="nav-label">Benchmarking</span>
+      </a>
+      <a class="nav-item" href="hierarchy.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="6" rx="1.3"/><rect x="3" y="15" width="6" height="6" rx="1.3"/><rect x="15" y="15" width="6" height="6" rx="1.3"/><path d="M12 9v3M6 15v-3h12v3"/></svg>
+        <span class="nav-label">Hierarchy</span>
+      </a>
+      <a class="nav-item" href="runs.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M10.2 8.7l5.4 3.3-5.4 3.3z"/></svg>
+        <span class="nav-label">Runs</span>
+      </a>
+      <a class="nav-item" href="workflows.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h6m0 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM5 17h6m0 0a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM5 7v10"/></svg>
+        <span class="nav-label">Workflows</span>
+      </a>
+    </div>
+    <div class="sidebar-section">
+      <div class="heading">Data &amp; admin</div>
+      <a class="nav-item" href="data-sources.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>
+        <span class="nav-label">Data sources</span>
+      </a>
+      <a class="nav-item" href="reports.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>
+        <span class="nav-label">Reports</span>
+      </a>
+      <a class="nav-item" href="#" data-quiet="Settings">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .4 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.4 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .4-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.4-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.4H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.4l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.4 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        <span class="nav-label">Settings</span>
+      </a>
+    </div>
+    <div class="sidebar-foot">
+      <div class="user-chip">TH</div>
+      <div>
+        <div class="nm">Tom Heffes</div>
+        <div class="rl">Tax Lead | Northgate</div>
+      </div>
+      <a class="more" href="#" data-quiet="Account menu" title="Account menu">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Icon rail (legacy, hidden) -->
+  <aside class="rail" aria-label="Workspace">
+    <div class="logo">fs</div>
+    <nav class="nav">
+      <a href="./" class="item active" title="Overview"><svg class="ico" viewBox="0 0 24 24"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg></a>
+      <a href="matrix.html" class="item" title="Cost matrix"><svg class="ico" viewBox="0 0 24 24"><path d="M4 6h6v6H4zM14 6h6v6h-6zM4 16h6v4H4zM14 16h6v4h-6z"/></svg></a>
+      <a href="hierarchy.html" class="item" title="Hierarchy"><svg class="ico" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="6" rx="1.3"/><rect x="3" y="15" width="6" height="6" rx="1.3"/><rect x="15" y="15" width="6" height="6" rx="1.3"/><path d="M12 9v3M6 15v-3h12v3"/></svg></a>
+      <a href="runs.html" class="item" title="Runs"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M10.2 8.7l5.4 3.3-5.4 3.3z"/></svg></a>
+      <a href="workflows.html" class="item" title="Workflows"><svg class="ico" viewBox="0 0 24 24"><path d="M5 7h6m0 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM5 17h6m0 0a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM5 7v10"/></svg></a>
+    </nav>
+    <div class="spacer"></div>
+    <a href="#" class="item" style="width: 40px; height: 40px;" title="Help" data-quiet="Help"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.4v.3M12 17h.01"/></svg></a>
+    <a href="#" class="item" style="width: 40px; height: 40px;" title="Settings" data-quiet="Settings"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .4 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.4 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .4-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.4-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.4H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.4l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.4 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></a>
+    <div class="me" title="Tom Heffes">TH</div>
+  </aside>
+
+  <main class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="brand-block">
+        <div class="logo">fs</div>
+        <button class="ws-switch">Northgate <svg class="ico-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l5 5 5-5"/></svg></button>
+      </div>
+      <div class="search">
+        <svg class="ico-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input placeholder="Jump to anything | entity, CC, transaction, run…" />
+        <span class="kbd">⌘K</span>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn" title="History"><svg class="ico" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5M12 7v6l4 2"/></svg></button>
+        <button class="icon-btn" title="Notifications"><svg class="ico" viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9zM10 21a2 2 0 0 0 4 0"/></svg></button>
+        <div class="user-chip" title="Tom Heffes">TH</div>
+      </div>
+    </div>
+
+    <div class="page">
+
+      <nav class="crumbs">
+        <span class="here">Transfer Pricing</span>
+        <span class="sep">/</span>
+        <span>Q4 2024</span>
+      </nav>
+
+      <!-- Header -->
+      <div class="page-head" data-reveal>
+        <div>
+          <div class="page-eyebrow">
+            <span>5 active processes | 3 collaborators online</span>
+          </div>
+          <h1 class="page-title">Transfer pricing, <em>at a glance.</em></h1>
+          <p class="page-sub">Q4 2024 close is underway. Three mapping activities are done, two remain. <a href="matrix.html" style="color: var(--brand); white-space: nowrap;">Continue with cost matrix&nbsp;→</a></p>
+        </div>
+        <div class="page-meta">
+          <span class="status-pill in-progress">Q4 2024 | In progress</span>
+          <div class="stack" title="Online now"><span class="av">TH</span><span class="av">JD</span><span class="av">MR</span><span class="av">AK</span></div>
+          <button class="btn"><svg class="ico" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg> Export</button>
+          <button class="btn primary"><svg class="ico" viewBox="0 0 24 24"><path d="M5 4l14 8-14 8z"/></svg> Calculate run</button>
+        </div>
+      </div>
+
+      <!-- Quarter selector -->
+      <div class="quarters" style="margin-bottom: 22px;" data-reveal>
+        <a class="q-tab active" href="#"><span class="dot"></span> Q4 2024</a>
+        <a class="q-tab" href="#">Q3 2024</a>
+        <a class="q-tab" href="#">Q2 2024</a>
+        <a class="q-tab" href="#">Q1 2024</a>
+        <a class="q-tab" href="#" style="color: var(--ink-3);">+ FY 2024</a>
+        <a class="q-tab" href="#" style="margin-left: auto; background: transparent; border: 1px dashed var(--line);"><svg class="ico-xs" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> New period</a>
+      </div>
+
+      <!-- Hero -->
+      <div class="hero">
+        <div class="hero-card" data-reveal>
+
+          <div class="score-row">
+            <div class="score-ring" aria-label="62 percent">
+              <svg viewBox="0 0 100 100">
+                <circle class="track" cx="50" cy="50" r="42" stroke-width="8" fill="none"/>
+                <circle class="fill"  cx="50" cy="50" r="42" stroke-width="8" fill="none"
+                  stroke-dasharray="163.4 263.9"/>
+              </svg>
+            </div>
+            <div class="score-caption">
+              <div class="lbl-row">
+                <span>Period score</span>
+                <span class="chip-delta">+14 vs Q3</span>
+              </div>
+              <div class="score-num" data-count="62"><span class="pct">%</span></div>
+              <div class="desc">Overall readiness across mapping, quality &amp; approvals</div>
+            </div>
+          </div>
+
+          <div class="phases">
+            <div class="phase done">
+              <div class="phase-name">Hierarchy</div>
+              <div class="phase-track"><div class="phase-fill" data-to="100%" style="width: 0%;"></div></div>
+              <div class="phase-pct">100%</div>
+            </div>
+            <div class="phase">
+              <div class="phase-name">Mapping</div>
+              <div class="phase-track"><div class="phase-fill" data-to="78%" style="width: 0%;"></div></div>
+              <div class="phase-pct">78%</div>
+            </div>
+            <div class="phase">
+              <div class="phase-name">Quality</div>
+              <div class="phase-track"><div class="phase-fill" data-to="42%" style="width: 0%;"></div></div>
+              <div class="phase-pct">42%</div>
+            </div>
+            <div class="phase todo">
+              <div class="phase-name">Approvals</div>
+              <div class="phase-track"><div class="phase-fill" style="width: 0%;"></div></div>
+              <div class="phase-pct">0%</div>
+            </div>
+          </div>
+
+          <div class="hero-cta">
+            <a class="btn primary" href="matrix.html">Resume mapping <svg class="ico" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+            <button class="btn">View runbook</button>
+          </div>
+        </div>
+
+        <!-- shared gradient defs (used by both metric cards) -->
+        <svg width="0" height="0" style="position:absolute;">
+          <defs>
+            <linearGradient id="brandGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="oklch(54% 0.19 254)" stop-opacity="0.22"/>
+              <stop offset="100%" stop-color="oklch(54% 0.19 254)" stop-opacity="0"/>
+            </linearGradient>
+            <linearGradient id="coralGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="oklch(64% 0.18 25)" stop-opacity="0.20"/>
+              <stop offset="100%" stop-color="oklch(64% 0.18 25)" stop-opacity="0"/>
+            </linearGradient>
+            <linearGradient id="mintGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="oklch(72% 0.13 162)" stop-opacity="0.26"/>
+              <stop offset="100%" stop-color="oklch(72% 0.13 162)" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+        </svg>
+
+        <div class="metric-card coral" data-reveal data-lift>
+            <div class="m-head">
+              <span class="m-label">
+                <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                Time to close
+              </span>
+              <span class="m-delta down">+3 vs target</span>
+            </div>
+            <div class="m-value" data-count="12"><span class="m-unit">days</span></div>
+            <div class="m-meta">Avg last 4 quarters | target ≤ 9 days</div>
+            <div class="m-chart coral">
+              <div class="m-bars">
+                <!-- Target line at 9d on a 15d scale = 60% from bottom -->
+                <div class="m-bars-target" style="bottom: 60%;"><span class="lbl">9d | target</span></div>
+                <div class="m-bar-col"><div class="m-bar" data-to="53%" style="height: 0%;"></div></div>
+                <div class="m-bar-col"><div class="m-bar" data-to="60%" style="height: 0%;"></div></div>
+                <div class="m-bar-col"><div class="m-bar" data-to="67%" style="height: 0%;"></div></div>
+                <div class="m-bar-col current"><div class="m-bar" data-to="80%" style="height: 0%;"></div></div>
+              </div>
+              <div class="m-axis">
+                <span><span class="v">8d</span>Q1</span>
+                <span><span class="v">9d</span>Q2</span>
+                <span><span class="v">10d</span>Q3</span>
+                <span class="current"><span class="v">12d</span>Q4</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="metric-card mint" data-reveal data-lift>
+            <div class="m-head">
+              <span class="m-label">
+                <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12l4 4L21 3"/></svg>
+                Auto-mapped
+              </span>
+              <span class="m-delta">+6 vs Q3</span>
+            </div>
+            <div class="m-value" data-count="94"><span class="m-unit">%</span></div>
+            <div class="m-meta">14.2k transactions | 7 to triage</div>
+            <div class="m-chart mint">
+              <div class="m-bars">
+                <!-- Target line at 98% -->
+                <div class="m-bars-target" style="bottom: 92%;"><span class="lbl">98% | target</span></div>
+                <div class="m-bar-col"><div class="m-bar" data-to="73%" style="height: 0%;"></div></div>
+                <div class="m-bar-col"><div class="m-bar" data-to="79%" style="height: 0%;"></div></div>
+                <div class="m-bar-col"><div class="m-bar" data-to="83%" style="height: 0%;"></div></div>
+                <div class="m-bar-col current"><div class="m-bar" data-to="88%" style="height: 0%;"></div></div>
+              </div>
+              <div class="m-axis">
+                <span><span class="v">78%</span>Q1</span>
+                <span><span class="v">84%</span>Q2</span>
+                <span><span class="v">88%</span>Q3</span>
+                <span class="current"><span class="v">94%</span>Q4</span>
+              </div>
+            </div>
+          </div>
+
+      </div>
+
+      <!-- Scoreboard stats -->
+      <div class="stats">
+        <div class="score-card" data-reveal>
+          <div class="label">Entities</div>
+          <div class="v" data-count="186"></div>
+          <div class="sub">4 unassigned | across 5 entity groups</div>
+        </div>
+        <div class="score-card" data-reveal>
+          <div class="label">Cost centres</div>
+          <div class="v" data-count="1284"></div>
+          <div class="sub">182 in this hierarchy | 5 unmapped</div>
+        </div>
+        <div class="score-card" data-reveal>
+          <div class="label">Transactions queued</div>
+          <div class="v" style="color: var(--brand);" data-count="14.2" data-count-decimals="1"><span class="unit">k</span></div>
+          <div class="sub">£ 412 m gross | ready to calculate</div>
+        </div>
+        <div class="score-card" style="border-color: var(--peach-line); background: linear-gradient(180deg, var(--peach-soft), var(--surface));" data-reveal>
+          <div class="label" style="color: var(--peach-ink);"><svg class="ico-xs" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 4l-7.6 13c-.8 1.5.3 3 2 3h15.4c1.7 0 2.8-1.5 2-3L13.7 4a2 2 0 0 0-3.4 0z"/></svg> Exceptions</div>
+          <div class="v" style="color: var(--peach-ink);" data-count="7"></div>
+          <div class="sub" style="color: var(--peach-ink);">3 new | <a href="exceptions.html" style="color: var(--peach-ink); text-decoration: underline;">triage now</a></div>
+        </div>
+      </div>
+
+      <!-- Pipeline + activity -->
+      <div class="grid-2-1" style="margin-bottom: 16px;">
+        <div class="card flush" data-reveal>
+          <div class="card-head">
+            <div class="card-title"><span class="num-badge">PIPELINE</span> TP adjustment process</div>
+            <div class="row gap-2">
+              <button class="btn ghost" style="padding: 4px 8px; font-size: 12px;">Filter</button>
+              <button class="btn ghost" style="padding: 4px 8px; font-size: 12px;">Runbook ↗</button>
+            </div>
+          </div>
+          <div style="padding: 18px;">
+            <div class="pipeline">
+              <div class="step done">
+                <div class="step-eyebrow">Step 1</div>
+                <div class="step-name">Data feeds</div>
+                <div class="step-progress"><div class="step-progress-fill" data-to="100%" style="width: 0%;"></div></div>
+                <div class="step-detail">3 sources | 14.2k rows</div>
+                <div class="step-meta">Ingested 19 Feb | 11:42</div>
+                <div class="step-mark"><svg class="ico-xs" viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></div>
+              </div>
+              <div class="step done">
+                <div class="step-eyebrow">Step 2</div>
+                <div class="step-name">Quality check</div>
+                <div class="step-progress"><div class="step-progress-fill" data-to="100%" style="width: 0%;"></div></div>
+                <div class="step-detail">14 of 14 checks passed</div>
+                <div class="step-meta">Ran 19 Feb | 11:51</div>
+                <div class="step-mark"><svg class="ico-xs" viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></div>
+              </div>
+              <div class="step done">
+                <div class="step-eyebrow">Step 3</div>
+                <div class="step-name">Hierarchy review</div>
+                <div class="step-progress"><div class="step-progress-fill" data-to="100%" style="width: 0%;"></div></div>
+                <div class="step-detail">v 4.2 | Maria R. signed off</div>
+                <div class="step-meta">Approved 21 Feb</div>
+                <div class="step-mark"><svg class="ico-xs" viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg></div>
+              </div>
+              <div class="step active">
+                <div class="step-eyebrow">Now</div>
+                <div class="step-name">Cost-centre mapping</div>
+                <div class="step-progress"><div class="step-progress-fill" data-to="60%" style="width: 0%;"></div></div>
+                <div class="step-detail">3 of 5 groupings | 60%</div>
+                <div class="step-meta">John Doe | started 12:42</div>
+                <div class="step-mark"><svg class="ico-xs" viewBox="0 0 24 24"><path d="M5 12h14"/></svg></div>
+              </div>
+              <div class="step next">
+                <div class="step-eyebrow">Step 5</div>
+                <div class="step-name">Calculate &amp; post</div>
+                <div class="step-progress"><div class="step-progress-fill"></div></div>
+                <div class="step-detail">186 journals | ~£28.9M</div>
+                <div class="step-meta">Pending sign-off</div>
+                <div class="step-mark"><svg class="ico-xs" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/></svg></div>
+              </div>
+            </div>
+          </div>
+          <div class="card-foot">
+            <svg class="ico-xs" style="color: var(--ink-4);" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+            Each step writes to <span class="mono" style="color: var(--ink);">tp_runs</span>. Click a step to see history, comments &amp; rerun.
+          </div>
+        </div>
+
+        <div class="card flush" data-reveal>
+          <div class="card-head">
+            <div class="card-title"><span class="num-badge">ACTIVITY</span> Recent changes</div>
+            <a href="#" class="btn ghost" data-quiet="Activity log" style="padding: 4px 8px; font-size: 12px;">All →</a>
+          </div>
+          <div style="padding: 4px 18px 18px;">
+            <div class="feed">
+              <div class="feed-item">
+                <div class="feed-avatar">JD</div>
+                <div class="feed-body"><b>John Doe</b> set <b>Routine × CFO</b> to <span class="pill markup-5"><span class="dot"></span> Cost +5%</span></div>
+                <div class="feed-time">2m</div>
+              </div>
+              <div class="feed-item">
+                <div class="feed-avatar alt2">MR</div>
+                <div class="feed-body"><b>Maria R.</b> approved hierarchy <b>Cost Centres</b></div>
+                <div class="feed-time">1h</div>
+              </div>
+              <div class="feed-item">
+                <div class="feed-avatar alt">AK</div>
+                <div class="feed-body"><b>Anil K.</b> flagged 3 unmapped CCs in <b>Legacy</b></div>
+                <div class="feed-time">3h</div>
+              </div>
+              <div class="feed-item">
+                <div class="feed-avatar">JD</div>
+                <div class="feed-body"><b>John Doe</b> imported new TB for <b>Connect Bidco</b></div>
+                <div class="feed-time">Yest.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Next-best actions + entity leaderboard -->
+      <div class="grid-1-1">
+        <div class="card flush" data-reveal>
+          <div class="card-head">
+            <div class="card-title"><span class="num-badge">DO NEXT</span> Next-best actions</div>
+            <a href="#" class="btn ghost" data-quiet="Snooze all" style="padding: 4px 8px; font-size: 12px;">Snooze all</a>
+          </div>
+          <div style="padding: 14px 18px 18px;">
+            <div class="next-actions">
+              <a href="matrix.html" class="next-action">
+                <div class="ico-wrap"><svg class="ico-sm" viewBox="0 0 24 24"><path d="M4 6h6v6H4zM14 6h6v6h-6zM4 16h6v4H4zM14 16h6v4h-6z"/></svg></div>
+                <div class="text"><b>Finish 2 cost groupings</b><div class="sub">"BU Operations" and "Central services" still have unset cells</div></div>
+                <div class="arr"><svg class="ico-sm" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></div>
+              </a>
+              <a href="exceptions.html" class="next-action">
+                <div class="ico-wrap peach"><svg class="ico-sm" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 4l-7.6 13c-.8 1.5.3 3 2 3h15.4c1.7 0 2.8-1.5 2-3L13.7 4a2 2 0 0 0-3.4 0z"/></svg></div>
+                <div class="text"><b>Triage 7 exceptions</b><div class="sub">Cost centres without a group | review &amp; assign</div></div>
+                <div class="arr"><svg class="ico-sm" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></div>
+              </a>
+              <a href="hierarchy.html" class="next-action">
+                <div class="ico-wrap mint"><svg class="ico-sm" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="6" rx="1.3"/><rect x="3" y="15" width="6" height="6" rx="1.3"/><rect x="15" y="15" width="6" height="6" rx="1.3"/><path d="M12 9v3M6 15v-3h12v3"/></svg></div>
+                <div class="text"><b>Review 5 new CCs</b><div class="sub">Added since last close | assign to a parent rollup</div></div>
+                <div class="arr"><svg class="ico-sm" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></div>
+              </a>
+              <a href="runs.html" class="next-action">
+                <div class="ico-wrap"><svg class="ico-sm" viewBox="0 0 24 24"><path d="M5 4l14 8-14 8z"/></svg></div>
+                <div class="text"><b>Run a dry-calc</b><div class="sub">Preview TP journals without posting | 30s</div></div>
+                <div class="arr"><svg class="ico-sm" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></div>
+              </a>
+              <a href="workflows?template=quarter-close" class="next-action">
+                <div class="ico-wrap mint"><svg class="ico-sm" viewBox="0 0 24 24"><path d="M5 7h6m0 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM5 17h6m0 0a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM5 7v10"/></svg></div>
+                <div class="text"><b>Automate the Q4 close</b><div class="sub">Build this quarter's pipeline as a workflow you can rerun</div></div>
+                <div class="arr"><svg class="ico-sm" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></div>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div class="card flush" data-reveal>
+          <div class="card-head">
+            <div class="card-title"><span class="num-badge">BY ENTITY</span> Top contributors to TP base</div>
+            <div class="row gap-2">
+              <select class="chip" style="padding: 4px 8px; border: 1px solid var(--line); background: var(--surface); font-size: 12px; color: var(--ink-2);">
+                <option>Gross cost</option><option>Net markup</option><option>Adjustment</option>
+              </select>
+            </div>
+          </div>
+          <table class="data leaderboard">
+            <thead>
+              <tr>
+                <th style="width: 32px;">#</th>
+                <th>Entity</th>
+                <th style="width: 110px;">Trend</th>
+                <th style="text-align: right; width: 110px;">Gross cost</th>
+                <th style="text-align: right; width: 80px;">Share</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="rank">01</td>
+                <td><a href="entity?e=connect-finco" class="name"><span class="ent-av">CF</span> CONNECT FINCO (LUX)</a></td>
+                <td><svg class="spark row-spark" viewBox="0 0 80 24" width="80" height="24" preserveAspectRatio="none"><path class="area" d="M0,18 L16,14 L32,16 L48,8 L64,10 L80,4 L80,24 L0,24 Z"/><path class="line" d="M0,18 L16,14 L32,16 L48,8 L64,10 L80,4"/></svg></td>
+                <td class="num"><span class="big">£ 112.4 m</span></td>
+                <td class="num">27.3%</td>
+              </tr>
+              <tr>
+                <td class="rank">02</td>
+                <td><a href="entity?e=northgate-solutions" class="name"><span class="ent-av alt">IS</span> Northgate Solutions doo</a></td>
+                <td><svg class="spark mint row-spark" viewBox="0 0 80 24" width="80" height="24" preserveAspectRatio="none"><path class="area" d="M0,12 L16,16 L32,10 L48,12 L64,8 L80,6 L80,24 L0,24 Z"/><path class="line" d="M0,12 L16,16 L32,10 L48,12 L64,8 L80,6"/></svg></td>
+                <td class="num"><span class="big">£ 86.2 m</span></td>
+                <td class="num">20.9%</td>
+              </tr>
+              <tr>
+                <td class="rank">03</td>
+                <td><a href="entity?e=connect-bidco" class="name"><span class="ent-av alt2">CB</span> Connect Bidco</a></td>
+                <td><svg class="spark row-spark" viewBox="0 0 80 24" width="80" height="24" preserveAspectRatio="none"><path class="area" d="M0,14 L16,10 L32,14 L48,10 L64,6 L80,8 L80,24 L0,24 Z"/><path class="line" d="M0,14 L16,10 L32,14 L48,10 L64,6 L80,8"/></svg></td>
+                <td class="num"><span class="big">£ 64.0 m</span></td>
+                <td class="num">15.5%</td>
+              </tr>
+              <tr>
+                <td class="rank">04</td>
+                <td><a href="entity?e=northgate-dooel" class="name"><span class="ent-av alt3">DK</span> Northgate DOOEL Skopje</a></td>
+                <td><svg class="spark coral row-spark" viewBox="0 0 80 24" width="80" height="24" preserveAspectRatio="none"><path class="area" d="M0,6 L16,8 L32,10 L48,14 L64,12 L80,16 L80,24 L0,24 Z"/><path class="line" d="M0,6 L16,8 L32,10 L48,14 L64,12 L80,16"/></svg></td>
+                <td class="num"><span class="big">£ 41.8 m</span></td>
+                <td class="num">10.1%</td>
+              </tr>
+              <tr>
+                <td class="rank">05</td>
+                <td><a href="entity?e=new-wave" class="name"><span class="ent-av">NW</span> New Wave Broadband</a></td>
+                <td><svg class="spark mint row-spark" viewBox="0 0 80 24" width="80" height="24" preserveAspectRatio="none"><path class="area" d="M0,18 L16,16 L32,14 L48,12 L64,10 L80,8 L80,24 L0,24 Z"/><path class="line" d="M0,18 L16,16 L32,14 L48,12 L64,10 L80,8"/></svg></td>
+                <td class="num"><span class="big">£ 28.4 m</span></td>
+                <td class="num">6.9%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Quiet reset affordance for the Close-the-Quarter demo flow -->
+      <div style="display: flex; justify-content: flex-end; padding: 20px 0 0;">
+        <a href="#" class="reset-quarter-link muted" style="font-size: 12px;">Reset quarter demo</a>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  'use strict';
+  if (!window.Arkk || !window.ArkkData) return;
+  var Arkk = window.Arkk, D = window.ArkkData, el = Arkk.el, clear = Arkk.clear;
+
+  /* ---- Header: Export ---- */
+  var headerBtns = document.querySelectorAll('.page-meta .btn');
+  var exportBtn = Array.prototype.filter.call(headerBtns, function (b) { return /Export/.test(b.textContent); })[0];
+  if (exportBtn) {
+    exportBtn.addEventListener('click', function () {
+      Arkk.exportCSV('northgate-q4-2024-overview.csv', ['Metric', 'Value'], [
+        ['Readiness', D.quarter.score],
+        ['Entities', D.quarter.entities],
+        ['Cost centres', D.quarter.ccs],
+        ['Uplift', D.quarter.uplift]
+      ]);
+    });
+  }
+
+  /* ---- Header: Calculate run - reuses the "Run a dry-calc" micro-flow ---- */
+  var calcBtn = Array.prototype.filter.call(headerBtns, function (b) { return /Calculate run/.test(b.textContent); })[0];
+  if (calcBtn) {
+    calcBtn.addEventListener('click', function () {
+      var dryLink = Array.prototype.filter.call(document.querySelectorAll('.next-actions .next-action'), function (a) { return /Run a dry-calc/.test(a.textContent); })[0];
+      if (dryLink) { dryLink.click(); return; }
+      var flow = Arkk.flow.get();
+      if (flow.posted) { window.location.href = 'run-detail?run=TP-Q4-2024-13'; return; }
+      Arkk.flow.set({ dryRun: 'TP-Q4-2024-13' });
+      window.location.href = 'run-detail?run=TP-Q4-2024-13&fresh=1';
+    });
+  }
+
+  /* ---- Hero: View runbook ---- */
+  var runbookBtn = Array.prototype.filter.call(document.querySelectorAll('.hero-cta .btn'), function (b) { return /View runbook/.test(b.textContent); })[0];
+  if (runbookBtn) runbookBtn.addEventListener('click', function () { if (Arkk.chrome) Arkk.chrome.help('close-quarter'); });
+
+  /* ---- Pipeline steps 2-5: real deep links (step 1 already wired in arkk.js) ---- */
+  var PIPELINE_TARGETS = [null, 'data-sources.html', 'hierarchy.html', 'exceptions.html', 'runs.html'];
+  document.querySelectorAll('.pipeline .step').forEach(function (step, i) {
+    var target = PIPELINE_TARGETS[i];
+    if (!target) return;
+    step.style.cursor = 'pointer';
+    step.addEventListener('click', function () { window.location.href = target; });
+  });
+
+  /* ---- Pipeline card: Filter + Runbook -> help overlay ---- */
+  var pipelineButtons = document.querySelectorAll('.grid-2-1 .card:first-child .card-head .btn.ghost');
+  var pipelineRunbookBtn = Array.prototype.filter.call(pipelineButtons, function (b) { return /Runbook/.test(b.textContent); })[0];
+  if (pipelineRunbookBtn) pipelineRunbookBtn.addEventListener('click', function () { if (Arkk.chrome) Arkk.chrome.help('close-quarter'); });
+  var pipelineFilterBtn = Array.prototype.filter.call(pipelineButtons, function (b) { return b.textContent.trim() === 'Filter'; })[0];
+  if (pipelineFilterBtn) {
+    pipelineFilterBtn.addEventListener('click', function () {
+      pipelineFilterBtn.classList.toggle('on');
+      document.querySelectorAll('.pipeline .step').forEach(function (step) {
+        step.style.opacity = (!pipelineFilterBtn.classList.contains('on') || step.classList.contains('active') || step.classList.contains('next')) ? '1' : '0.45';
+      });
+    });
+  }
+
+  /* ---- Activity feed: seed with kinds so Filter + History drawer can both classify it ---- */
+  var ACTIVITY_SEED = [
+    { kind: 'data', title: 'John Doe set Routine x CFO to Cost +5%', meta: '2m ago', href: 'matrix.html' },
+    { kind: 'data', title: 'Maria R. approved hierarchy Cost Centres', meta: '1h ago', href: 'hierarchy.html' },
+    { kind: 'exception', title: 'Anil K. flagged 3 unmapped CCs in Legacy', meta: '3h ago', href: 'exceptions.html' },
+    { kind: 'data', title: 'John Doe imported new TB for Connect Bidco', meta: 'Yesterday', href: 'data-sources.html' }
+  ];
+  var feedRows = document.querySelectorAll('.feed .feed-item');
+  feedRows.forEach(function (row, i) {
+    var seed = ACTIVITY_SEED[i];
+    if (!seed) return;
+    row.dataset.kind = seed.kind;
+    row.style.cursor = 'pointer';
+    row.addEventListener('click', function () {
+      Arkk.activity.log({ kind: seed.kind, title: seed.title, href: seed.href });
+      window.location.href = seed.href;
+    });
+  });
+
+  var activityCardHead = Array.prototype.filter.call(document.querySelectorAll('.grid-2-1 .card'), function (c) { return /Recent changes/.test(c.textContent); })[0];
+  if (activityCardHead) {
+    var filterWrap = el('div', { style: 'display:flex; gap:6px; padding:0 18px 8px;' });
+    var groups = [['all', 'All'], ['exception', 'Exceptions'], ['data', 'Data'], ['run', 'Runs']];
+    groups.forEach(function (g) {
+      var b = el('button', { cls: 'btn ghost', text: g[1], type: 'button', style: 'padding:3px 9px; font-size:11px;' });
+      if (g[0] === 'all') b.classList.add('on');
+      b.addEventListener('click', function () {
+        filterWrap.querySelectorAll('button').forEach(function (o) { o.classList.remove('on'); });
+        b.classList.add('on');
+        feedRows.forEach(function (row) {
+          row.style.display = (g[0] === 'all' || row.dataset.kind === g[0]) ? '' : 'none';
+        });
+      });
+      filterWrap.appendChild(b);
+    });
+    activityCardHead.querySelector('.feed').parentElement.insertAdjacentElement('beforebegin', filterWrap);
+
+    var activityAllLink = activityCardHead.querySelector('a[data-quiet="Activity log"]');
+    if (activityAllLink) {
+      activityAllLink.removeAttribute('data-quiet');
+      activityAllLink.addEventListener('click', function (e) { e.preventDefault(); if (Arkk.chrome) Arkk.chrome.openHistory(); });
+    }
+  }
+
+  /* ---- Next-best actions: Snooze all ---- */
+  var snoozeAllLink = document.querySelector('a[data-quiet="Snooze all"]');
+  if (snoozeAllLink) {
+    snoozeAllLink.removeAttribute('data-quiet');
+    snoozeAllLink.addEventListener('click', function (e) {
+      e.preventDefault();
+      var n = Arkk.chrome ? Arkk.chrome.snoozeAllNotifications() : 0;
+      Arkk.toast('Snoozed ' + n + ' items until tomorrow.');
+    });
+  }
+});
+</script>
+
+</body>
+</html>

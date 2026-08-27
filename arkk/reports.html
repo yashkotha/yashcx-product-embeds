@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<script>try{if(localStorage.getItem('arkk.nav.collapsed')==='1')document.documentElement.dataset.navCollapsed='1';}catch(e){}</script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Reports | Arkk</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  /* Chrome reconciliation: left sidebar is the ONE navigation; the topbar
+     segmented tab strip duplicated it and is removed. Collapse the topbar
+     grid from 3 tracks (nav | search | actions) to 2 (search | actions)
+     without touching shared.css (LAW, never edited). */
+  .topbar { grid-template-columns: 1fr auto !important; }
+</style>
+<link rel="stylesheet" href="arkk-nav.css" />
+<script defer src="arkk-data.js"></script>
+<script defer src="arkk.js"></script>
+<script defer src="arkk-nav.js"></script>
+<script defer src="arkk-chrome.js"></script>
+<style>
+  /* Report card grid (Part C) */
+  .report-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+    padding: 18px;
+  }
+  .report-card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md);
+    padding: 18px 20px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .report-card .doc-ico {
+    width: 36px; height: 36px; border-radius: 9px;
+    background: var(--brand-soft); color: var(--brand-2);
+    display: grid; place-items: center;
+  }
+  .report-card.ready .doc-ico { background: var(--mint-soft); color: var(--mint-ink); }
+  .report-card .rc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .report-card .rc-title { font-size: 14px; font-weight: 500; color: var(--ink); }
+  .report-card .rc-desc { font-size: 12px; color: var(--ink-3); line-height: 1.5; }
+  .report-card .rc-meta { font-size: 12px; color: var(--ink-3); }
+  .report-card .rc-progress { margin-top: 2px; }
+  .report-card .rc-progress .lbl { font-size: 11px; color: var(--ink-3); margin-bottom: 6px; }
+  .report-card .rc-bar { height: 6px; background: var(--bg-2); border-radius: 4px; overflow: hidden; border: 1px solid var(--line-2); }
+  .report-card .rc-bar > div { height: 100%; width: 0%; background: linear-gradient(90deg, var(--brand-2), var(--brand)); border-radius: 4px; }
+  .report-card .rc-actions { margin-top: auto; padding-top: 6px; display: flex; gap: 8px; }
+
+  /* Page-local secondary-action treatment: paired secondary actions
+     (Cancel / Back / Reset) must read as buttons, not bare text.
+     Neutral low-alpha ink fill, standard hairline, same geometry as the
+     adjacent primary. Hover deepens the fill. */
+  .btn.soft {
+    background: oklch(18% 0.014 254 / 0.05);
+    border-color: var(--line);
+    color: var(--ink-2);
+    box-shadow: none;
+  }
+  .btn.soft:hover {
+    background: oklch(18% 0.014 254 / 0.09);
+    border-color: oklch(87% 0.012 254);
+    color: var(--ink);
+  }
+  .btn.soft:focus-visible {
+    outline: 2px solid oklch(54% 0.19 254 / 0.3);
+    outline-offset: 1px;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Primary (dashboard) navigation -->
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <div class="logo">fs</div>
+      <button class="ws-switch">
+        Northgate
+        <svg class="ico-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l5 5 5-5"/></svg>
+      </button>
+    </div>
+    <div class="sidebar-section">
+      <a class="nav-item" href="./">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 9.5V21h5v-7h4v7h5V9.5"/></svg>
+        <span class="nav-label">Dashboard</span>
+      </a>
+      <a class="nav-item" href="#" data-focus-search>
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <span class="nav-label">Search</span>
+        <span class="count">⌘K</span>
+      </a>
+      <a class="nav-item" href="#" data-quiet="Inbox">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l3-9h12l3 9v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1zM3 13h6l1 3h4l1-3h6"/></svg>
+        <span class="nav-label">Inbox</span>
+        <span class="count">3</span>
+      </a>
+    </div>
+    <div class="sidebar-section">
+      <div class="heading">Workspace</div>
+      <a class="nav-item" href="./">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 9.5V21h5v-7h4v7h5V9.5"/></svg>
+        <span class="nav-label">Overview</span>
+      </a>
+      <a class="nav-item" href="matrix.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h6v6H4zM14 6h6v6h-6zM4 16h6v4H4zM14 16h6v4h-6z"/></svg>
+        <span class="nav-label">Cost matrix</span>
+      </a>
+      <a class="nav-item" href="transfer-pricing.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h14M14 5l3 3-3 3M21 16H7M10 19l-3-3 3-3"/></svg>
+        <span class="nav-label">Benchmarking</span>
+      </a>
+      <a class="nav-item" href="hierarchy.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="6" rx="1.3"/><rect x="3" y="15" width="6" height="6" rx="1.3"/><rect x="15" y="15" width="6" height="6" rx="1.3"/><path d="M12 9v3M6 15v-3h12v3"/></svg>
+        <span class="nav-label">Hierarchy</span>
+      </a>
+      <a class="nav-item" href="runs.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M10.2 8.7l5.4 3.3-5.4 3.3z"/></svg>
+        <span class="nav-label">Runs</span>
+      </a>
+      <a class="nav-item" href="workflows.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h6m0 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM5 17h6m0 0a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM5 7v10"/></svg>
+        <span class="nav-label">Workflows</span>
+      </a>
+    </div>
+    <div class="sidebar-section">
+      <div class="heading">Data &amp; admin</div>
+      <a class="nav-item" href="data-sources.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>
+        <span class="nav-label">Data sources</span>
+      </a>
+      <a class="nav-item active" href="reports.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>
+        <span class="nav-label">Reports</span>
+      </a>
+      <a class="nav-item" href="#" data-quiet="Settings">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .4 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.4 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .4-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.4-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.4H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.4l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.4 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        <span class="nav-label">Settings</span>
+      </a>
+    </div>
+    <div class="sidebar-foot">
+      <div class="user-chip">TH</div>
+      <div>
+        <div class="nm">Tom Heffes</div>
+        <div class="rl">Tax Lead | Northgate</div>
+      </div>
+      <a class="more" href="#" data-quiet="Account menu" title="Account menu">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Icon rail (legacy, hidden) -->
+  <aside class="rail" aria-label="Workspace">
+    <div class="logo">fs</div>
+    <nav class="nav">
+      <a href="./" class="item" title="Overview"><svg class="ico" viewBox="0 0 24 24"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg></a>
+      <a href="matrix.html" class="item" title="Cost matrix"><svg class="ico" viewBox="0 0 24 24"><path d="M4 6h6v6H4zM14 6h6v6h-6zM4 16h6v4H4zM14 16h6v4h-6z"/></svg></a>
+      <a href="hierarchy.html" class="item" title="Hierarchy"><svg class="ico" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="6" rx="1.3"/><rect x="3" y="15" width="6" height="6" rx="1.3"/><rect x="15" y="15" width="6" height="6" rx="1.3"/><path d="M12 9v3M6 15v-3h12v3"/></svg></a>
+      <a href="runs.html" class="item" title="Runs"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M10.2 8.7l5.4 3.3-5.4 3.3z"/></svg></a>
+      <a href="workflows.html" class="item" title="Workflows"><svg class="ico" viewBox="0 0 24 24"><path d="M5 7h6m0 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM5 17h6m0 0a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM5 7v10"/></svg></a>
+    </nav>
+    <div class="spacer"></div>
+    <a href="#" class="item" style="width: 40px; height: 40px;" title="Help" data-quiet="Help"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.4v.3M12 17h.01"/></svg></a>
+    <a href="#" class="item" style="width: 40px; height: 40px;" title="Settings" data-quiet="Settings"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .4 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.4 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .4-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.4-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.4H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.4l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.4 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></a>
+    <div class="me" title="Tom Heffes">TH</div>
+  </aside>
+
+  <main class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="brand-block">
+        <div class="logo">fs</div>
+        <button class="ws-switch">Northgate <svg class="ico-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l5 5 5-5"/></svg></button>
+      </div>
+      <div class="search">
+        <svg class="ico-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input placeholder="Find a report or period…" />
+        <span class="kbd">/</span>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn" title="Notifications"><svg class="ico" viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9zM10 21a2 2 0 0 0 4 0"/></svg></button>
+        <div class="user-chip" title="Tom Heffes">TH</div>
+      </div>
+    </div>
+
+    <div class="page">
+
+      <nav class="crumbs">
+        <a href="./">Transfer Pricing</a>
+        <span class="sep">/</span>
+        <a href="./">Q4 2024</a>
+        <span class="sep">/</span>
+        <span class="here">Reports</span>
+      </nav>
+
+      <!-- Header -->
+      <div class="page-head" data-reveal>
+        <div>
+          <div class="page-eyebrow">
+            <span>4 report types | Q4 2024 | OECD BEPS Action 13 aligned</span>
+          </div>
+          <h1 class="page-title">TP <em>documentation.</em></h1>
+          <p class="page-sub">Generate and download the transfer-pricing documentation for this period. Local File, Master File and CbC tables draw straight from the posted run - no re-keying, always reconciled to the journals.</p>
+        </div>
+        <div class="page-meta">
+          <span class="status-pill done"><span class="dot"></span> Q4 2024</span>
+          <button class="btn" id="reports-history-btn">History</button>
+          <button class="btn primary" id="generate-all-btn" data-commit>Generate all</button>
+        </div>
+      </div>
+
+      <!-- Report cards -->
+      <div class="card flush" data-reveal style="margin-bottom: 18px;">
+        <div class="card-head">
+          <div class="card-title"><span class="num-badge">REPORTS</span> Documentation set</div>
+        </div>
+        <div class="report-grid">
+
+          <div class="report-card ready">
+            <div class="rc-head">
+              <span class="doc-ico"><svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></span>
+              <span class="status-pill done"><span class="dot"></span> Ready</span>
+            </div>
+            <div class="rc-title">Local File</div>
+            <div class="rc-desc">Entity-level TP analysis for the 6 principal entities.</div>
+            <div class="rc-meta">Generated 2h ago | 42 pages | PDF</div>
+            <div class="rc-actions">
+              <button class="btn"><svg class="ico-xs" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg> Download</button>
+            </div>
+          </div>
+
+          <div class="report-card ready">
+            <div class="rc-head">
+              <span class="doc-ico"><svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></span>
+              <span class="status-pill done"><span class="dot"></span> Ready</span>
+            </div>
+            <div class="rc-title">Master File</div>
+            <div class="rc-desc">Group structure, intangibles and financing overview.</div>
+            <div class="rc-meta">Generated 2h ago | 28 pages | PDF</div>
+            <div class="rc-actions">
+              <button class="btn"><svg class="ico-xs" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg> Download</button>
+            </div>
+          </div>
+
+          <div class="report-card" id="report-cbc">
+            <div class="rc-head">
+              <span class="doc-ico"><svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></span>
+              <span class="status-pill in-progress" id="cbc-pill"><span class="dot"></span> Generating</span>
+            </div>
+            <div class="rc-title">CbC tables</div>
+            <div class="rc-desc">Country-by-country revenue, profit, tax and headcount.</div>
+            <div class="rc-meta" id="cbc-meta">Generating now</div>
+            <div class="rc-progress" id="cbc-progress">
+              <div class="lbl" id="cbc-step-label">Building country tables... 42 of 61 jurisdictions</div>
+              <div class="rc-bar"><div></div></div>
+            </div>
+            <div class="rc-actions">
+              <button class="btn" id="cbc-action" disabled>Generating...</button>
+              <button class="btn soft" id="cbc-refresh-btn" style="display: none;" type="button">Refresh</button>
+            </div>
+          </div>
+
+          <div class="report-card" id="rc-tp-policy">
+            <div class="rc-head">
+              <span class="doc-ico"><svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></span>
+              <span class="status-pill queued" id="policy-pill"><span class="dot"></span> Not generated</span>
+            </div>
+            <div class="rc-title">TP policy summary</div>
+            <div class="rc-desc">Plain-language summary of the markup policy applied this period.</div>
+            <div class="rc-meta" id="policy-meta">Draws from TP-Q4-2024-13</div>
+            <div class="rc-actions">
+              <button class="btn primary" id="policy-generate-btn" data-commit type="button">Generate</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Generated-reports table -->
+      <div class="card flush" data-reveal>
+        <div class="card-head">
+          <div class="card-title"><span class="num-badge">HISTORY</span> Generated reports</div>
+        </div>
+        <table class="data">
+          <thead>
+            <tr>
+              <th>Period</th>
+              <th>Type</th>
+              <th>Generated by</th>
+              <th>Generated</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="reports-table-body">
+            <tr id="reports-row-cbc">
+              <td>Q4 2024</td>
+              <td>CbC tables</td>
+              <td>System</td>
+              <td class="gen-cell">generating</td>
+              <td><span class="status-pill in-progress"><span class="dot"></span> Generating</span></td>
+              <td class="dl-cell muted">-</td>
+            </tr>
+            <tr>
+              <td>Q4 2024</td>
+              <td>Local File</td>
+              <td>Tom Heffes</td>
+              <td>2h ago</td>
+              <td><span class="status-pill done"><span class="dot"></span> Ready</span></td>
+              <td><a href="#" style="color: var(--brand);">Download</a></td>
+            </tr>
+            <tr>
+              <td>Q4 2024</td>
+              <td>Master File</td>
+              <td>Tom Heffes</td>
+              <td>2h ago</td>
+              <td><span class="status-pill done"><span class="dot"></span> Ready</span></td>
+              <td><a href="#" style="color: var(--brand);">Download</a></td>
+            </tr>
+            <tr>
+              <td>Q3 2024</td>
+              <td>Local File</td>
+              <td>Maria R.</td>
+              <td>21 Oct</td>
+              <td><span class="status-pill done"><span class="dot"></span> Ready</span></td>
+              <td><a href="#" style="color: var(--brand);">Download</a></td>
+            </tr>
+            <tr>
+              <td>Q3 2024</td>
+              <td>CbC tables</td>
+              <td>System</td>
+              <td>21 Oct</td>
+              <td><span class="status-pill done"><span class="dot"></span> Ready</span></td>
+              <td><a href="#" style="color: var(--brand);">Download</a></td>
+            </tr>
+            <tr>
+              <td>Q3 2024</td>
+              <td>TP policy summary</td>
+              <td>John Doe</td>
+              <td>20 Oct</td>
+              <td><span class="status-pill done"><span class="dot"></span> Ready</span></td>
+              <td><a href="#" style="color: var(--brand);">Download</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- =====================================================================
+     WAVE 2 - page-unique behaviour (real downloads x9, Generate all,
+     History, policy-card persistence). Additive: layers on top of
+     arkk.js's existing initReports (CBC auto-generate timer, policy
+     Generate flow) rather than duplicating it wholesale - no shared file
+     touched, no arkk.js edit. The one exception is a capture-phase click
+     listener for Download, mirroring arkk-chrome.js's own documented
+     technique for pre-empting [data-quiet]'s bubble-phase fallback
+     without editing markup on every row.
+     ===================================================================== -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  'use strict';
+  if (!window.Arkk) return;
+  var el = Arkk.el, icon = Arkk.icon, clear = Arkk.clear;
+
+  var reportsStore = Arkk.store('arkk.reports.v1', function () { return { byId: {} }; });
+
+  /* ---- Report content generators - real CSV/text stand-ins for the PDF/
+     XLSX artifacts (disclosed in the file itself, same pattern as the
+     policy card's own copy: the download IS real, only the fidelity is a
+     text/CSV preview). Uses the same Northgate entities/jurisdictions as
+     the rest of the app - no invented facts. ---- */
+  function slugPeriod(period) { return (period || 'Q4 2024').replace(/\s+/g, '-').toLowerCase(); }
+  function reportContent(type, period) {
+    var p = slugPeriod(period);
+    if (type === 'CbC tables') {
+      return {
+        filename: 'northgate-' + p + '-country-by-country.csv',
+        headers: ['Jurisdiction', 'Entity', 'Revenue (£m)', 'Profit before tax (£m)', 'Income tax paid (£m)', 'Employees'],
+        rows: [
+          ['Luxembourg', 'Connect Finco (Lux)', '112.4', '38.6', '9.7', '24'],
+          ['Serbia', 'Northgate Solutions doo', '64.2', '11.2', '2.8', '146'],
+          ['United Kingdom', 'Connect Bidco', '58.0', '9.4', '2.1', '38'],
+          ['North Macedonia', 'Northgate DOOEL Skopje', '21.6', '3.1', '0.6', '212'],
+          ['Ireland', 'New Wave Broadband', '18.9', '4.0', '0.9', '31']
+        ]
+      };
+    }
+    if (type === 'TP policy summary') {
+      return {
+        filename: 'northgate-' + p + '-tp-policy-summary.csv',
+        headers: ['Note', 'Detail'],
+        rows: [
+          ['Generated preview', 'Full PDF export not included in this demo'],
+          ['Period', period],
+          ['Default markup rule', 'Cost +7%'],
+          ['Low value-add services', 'OECD Ch. VII elective | fixed 5% cost mark-up'],
+          ['IP licensing', 'CUP royalty rate | benchmarked externally'],
+          ['Approval routing', 'Tax Lead sign-off | Tom Heffes']
+        ]
+      };
+    }
+    if (type === 'Master File') {
+      return {
+        filename: 'northgate-' + p + '-master-file.csv',
+        headers: ['Section', 'Summary'],
+        rows: [
+          ['Group structure', 'Northgate group | 5 principal operating entities | HQ in the UK'],
+          ['Intangibles', 'IP licensed from Connect Finco (Lux) | CUP-benchmarked royalty'],
+          ['Financing', 'Intra-group treasury spread tested by CUP against third-party debt'],
+          ['Functional analysis', 'Principal / routine / holding entity groups | see cost matrix']
+        ]
+      };
+    }
+    return {
+      filename: 'northgate-' + p + '-local-file.csv',
+      headers: ['Entity', 'Jurisdiction', 'Gross cost', 'Markup applied'],
+      rows: [
+        ['Connect Finco (Lux)', 'Luxembourg', '£ 12.4m', 'CUP royalty'],
+        ['Northgate Solutions doo', 'Serbia', '£ 7.8m', 'Cost +7%'],
+        ['Connect Bidco', 'United Kingdom', '£ 4.0m', 'Low value-add 5%'],
+        ['Northgate DOOEL Skopje', 'North Macedonia', '£ 1.6m', 'At cost'],
+        ['New Wave Broadband', 'Ireland', '£ 1.99m', 'Cost +7%']
+      ]
+    };
+  }
+
+  /* ---- Every Download - capture phase so this always wins over
+     initQuietNav's bubble-phase [data-quiet] fallback, no per-row markup
+     edits needed beyond the ones already stripped above. ---- */
+  document.addEventListener('click', function (e) {
+    var target = e.target.closest('a, button');
+    if (!target || target.textContent.trim() !== 'Download') return;
+    var card = target.closest('.report-card');
+    var row = target.closest('#reports-table-body tr');
+    if (!card && !row) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var type, period;
+    if (card) {
+      var titleEl = card.querySelector('.rc-title');
+      type = titleEl ? titleEl.textContent.trim() : 'Local File';
+      period = 'Q4 2024';
+    } else {
+      var cells = row.querySelectorAll('td');
+      period = cells[0] ? cells[0].textContent.trim() : 'Q4 2024';
+      type = cells[1] ? cells[1].textContent.trim() : 'Local File';
+    }
+    var content = reportContent(type, period);
+    Arkk.exportCSV(content.filename, content.headers, content.rows);
+  }, true);
+
+  /* ---- CBC "finish" mirror - used by Generate all to force-complete the
+     card immediately instead of waiting out its own ~23s timer. Produces
+     the exact same end state as arkk.js's own finishCbc(); idempotent. ---- */
+  function finishCbcNow() {
+    var cbcPill = document.getElementById('cbc-pill');
+    if (cbcPill && cbcPill.textContent.trim() === 'Ready') return;
+    if (cbcPill) { clear(cbcPill); cbcPill.className = 'status-pill done'; cbcPill.appendChild(el('span', { cls: 'dot' })); cbcPill.appendChild(document.createTextNode('Ready')); }
+    var cbcMeta = document.getElementById('cbc-meta');
+    if (cbcMeta) cbcMeta.textContent = 'Generated just now | 12 tables | XLSX';
+    var cbcProgress = document.getElementById('cbc-progress');
+    if (cbcProgress) cbcProgress.style.display = 'none';
+    var cbcAction = document.getElementById('cbc-action');
+    if (cbcAction) {
+      clear(cbcAction);
+      cbcAction.className = 'btn';
+      cbcAction.disabled = false;
+      cbcAction.appendChild(icon('M12 3v12M7 10l5 5 5-5M5 21h14'));
+      cbcAction.appendChild(document.createTextNode(' Download'));
+    }
+    var cbcRow = document.getElementById('reports-row-cbc');
+    if (cbcRow) {
+      var statusCell = cbcRow.querySelector('.status-pill');
+      if (statusCell) { clear(statusCell); statusCell.className = 'status-pill done'; statusCell.appendChild(el('span', { cls: 'dot' })); statusCell.appendChild(document.createTextNode('Ready')); }
+      var genCell = cbcRow.querySelector('.gen-cell');
+      if (genCell) genCell.textContent = 'just now';
+      var dlCell = cbcRow.querySelector('.dl-cell');
+      if (dlCell) { clear(dlCell); dlCell.classList.remove('muted'); var a = el('a', { text: 'Download', style: 'color: var(--brand);' }); a.href = '#'; dlCell.appendChild(a); }
+    }
+  }
+
+  /* ---- Policy-card persistence - the gap Wave 1 left open (a reload
+     reset "Not generated" back to its starting state even after a real
+     Generate). Restores the exact end state arkk.js's own finish()
+     produces, then marks dataset.done so its real click handler no-ops
+     on a stray click, same as it already does mid-session. ---- */
+  function restorePolicyReady() {
+    var policyBtn = document.getElementById('policy-generate-btn');
+    if (!policyBtn || policyBtn.dataset.done === '1') return;
+    policyBtn.dataset.done = '1';
+    var pill = document.getElementById('policy-pill');
+    if (pill) { clear(pill); pill.className = 'status-pill done'; pill.appendChild(el('span', { cls: 'dot' })); pill.appendChild(document.createTextNode('Ready')); }
+    var meta = document.getElementById('policy-meta');
+    if (meta) meta.textContent = 'Generated | 6 pages | PDF';
+    clear(policyBtn);
+    policyBtn.className = 'btn';
+    policyBtn.appendChild(icon('M12 3v12M7 10l5 5 5-5M5 21h14'));
+    policyBtn.appendChild(document.createTextNode(' Download'));
+    var tableBody = document.getElementById('reports-table-body');
+    if (tableBody) {
+      var row = el('tr');
+      ['Q4 2024', 'TP policy summary', 'Tom Heffes', 'earlier this session'].forEach(function (t) { row.appendChild(el('td', { text: t })); });
+      var statusTd = el('td');
+      var p2 = el('span', { cls: 'status-pill done' });
+      p2.appendChild(el('span', { cls: 'dot' }));
+      p2.appendChild(document.createTextNode('Ready'));
+      statusTd.appendChild(p2);
+      row.appendChild(statusTd);
+      var dlTd = el('td');
+      var dlLink = el('a', { text: 'Download', style: 'color: var(--brand);' });
+      dlLink.href = '#';
+      dlTd.appendChild(dlLink);
+      row.appendChild(dlTd);
+      tableBody.insertBefore(row, tableBody.firstChild);
+    }
+  }
+  var initReportsState = reportsStore.get();
+  if (initReportsState.byId && initReportsState.byId.policy && initReportsState.byId.policy.status === 'ready') restorePolicyReady();
+
+  var policyGenerateBtn = document.getElementById('policy-generate-btn');
+  if (policyGenerateBtn) policyGenerateBtn.addEventListener('click', function () {
+    setTimeout(function () {
+      var s = reportsStore.get();
+      if (!s.byId) s.byId = {};
+      s.byId.policy = { status: 'ready', generatedAt: Date.now() };
+      reportsStore.set(s, true);
+    }, Arkk.reduce ? 0 : 950);
+  });
+
+  /* ---- Generate all: sequentially completes every not-yet-ready card. ---- */
+  var genAllBtn = document.getElementById('generate-all-btn');
+  if (genAllBtn) {
+    genAllBtn.addEventListener('click', function () {
+      if (genAllBtn.dataset.running === '1') return;
+      genAllBtn.dataset.running = '1';
+      var prevLabel = genAllBtn.textContent;
+      genAllBtn.disabled = true;
+      genAllBtn.textContent = 'Generating…';
+
+      var tasks = [];
+      var cbcPill = document.getElementById('cbc-pill');
+      if (cbcPill && cbcPill.textContent.trim() !== 'Ready') {
+        tasks.push(function (done) { setTimeout(function () { finishCbcNow(); done(); }, Arkk.reduce ? 0 : 900); });
+      }
+      var policyBtn = document.getElementById('policy-generate-btn');
+      if (policyBtn && policyBtn.dataset.done !== '1') {
+        tasks.push(function (done) { policyBtn.click(); setTimeout(done, Arkk.reduce ? 0 : 950); });
+      }
+
+      function finishAll() {
+        genAllBtn.disabled = false;
+        genAllBtn.textContent = prevLabel;
+        delete genAllBtn.dataset.running;
+        Arkk.activity.log({ kind: 'export', title: 'Generated all Q4 2024 reports', href: 'reports.html' });
+        Arkk.toast(tasks.length ? 'All reports generated.' : 'All reports were already generated.');
+      }
+      function runNext(i) {
+        if (i >= tasks.length) { finishAll(); return; }
+        tasks[i](function () { runNext(i + 1); });
+      }
+      runNext(0);
+    });
+  }
+
+  /* ---- History -> the shared drawer, pre-filtered to Data (exports /
+     report generations bucket into that filter - see arkk-chrome.js
+     bucketOf()). ---- */
+  var historyBtn = document.getElementById('reports-history-btn');
+  if (historyBtn) historyBtn.addEventListener('click', function () {
+    if (window.Arkk && Arkk.chrome && Arkk.chrome.openHistory) Arkk.chrome.openHistory('data');
+  });
+});
+</script>
+</body>
+</html>

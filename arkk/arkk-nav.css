@@ -1,0 +1,72 @@
+/*
+ * arkk-nav.css - collapsible main navigation (CANVAS-SPEC.md §4).
+ * Linked AFTER shared.css on all 13 Arkk pages. shared.css itself is LAW and
+ * stays untouched - this file only overrides on top of it, keyed on a root
+ * data attribute so it has no effect at all until the nav is collapsed.
+ */
+
+/* Standing collapse law: the rail width animates as one smooth grid-column
+   transition; the sidebar clips its own content (overflow hidden) so nothing
+   paints past the rail edge mid-frame, and nav rows never wrap. */
+.app { transition: grid-template-columns var(--dur-ui) var(--ease-house); }
+.sidebar { overflow-x: hidden; }
+.sidebar-head, .sidebar-foot, .nav-item { white-space: nowrap; }
+
+:root[data-nav-collapsed="1"] .app { grid-template-columns: 64px 1fr !important; }
+
+/* Collapsed sidebar chrome */
+:root[data-nav-collapsed="1"] .sidebar { padding: 12px 8px 8px; align-items: stretch; }
+:root[data-nav-collapsed="1"] .sidebar-section .heading { display: none; }
+
+/* Head - the 64px rail cannot fit the workspace tile and the expand chevron
+   side by side (28 + 9 gap + 28 = 65px in a 48px content box pushed the logo
+   off the left edge and the chevron flush against the right). Stack them:
+   workspace tile on top, expand toggle beneath, both centered and whole. */
+:root[data-nav-collapsed="1"] .sidebar-head {
+  flex-direction: column; align-items: center; justify-content: flex-start;
+  gap: 8px; padding: 4px 0 12px;
+}
+:root[data-nav-collapsed="1"] .sidebar-head .ws-switch { display: none; }
+:root[data-nav-collapsed="1"] .arkk-nav-toggle { margin: 0; }
+
+/* Rail tiles - one uniform 40x34 hit target per destination, centered. */
+:root[data-nav-collapsed="1"] .nav-item {
+  justify-content: center; gap: 0;
+  width: 40px; padding: 8px 0; margin: 1px auto;
+}
+:root[data-nav-collapsed="1"] .nav-item > :not(.ico-sm) { display: none; }
+:root[data-nav-collapsed="1"] .nav-item .ico-sm { width: 18px; height: 18px; }
+
+/* One icon per real destination: the first section's "Dashboard" entry is
+   the same destination ("./") and the same glyph as "Overview" in the
+   Workspace group, so the collapsed rail showed two identical home icons.
+   The Workspace copy keeps the slot (it carries the active state on the
+   overview page); the shortcut copy folds away with its label. */
+:root[data-nav-collapsed="1"] .sidebar-head + .sidebar-section .nav-item[href="./"] { display: none; }
+
+/* Hairline group separators - collapsed mode strips the mono section
+   headings, so a divider is the only remaining signal a new group started. */
+:root[data-nav-collapsed="1"] .sidebar-section + .sidebar-section {
+  border-top: 1px solid var(--line-2);
+  margin-top: 7px; padding-top: 7px;
+}
+
+/* Foot - avatar only, centered; it stays the account-popover trigger. */
+:root[data-nav-collapsed="1"] .sidebar-foot { justify-content: center; padding: 12px 0 6px; }
+:root[data-nav-collapsed="1"] .sidebar-foot > :not(.user-chip) { display: none; }
+
+/* Toggle button (injected by arkk-nav.js into .sidebar-head) */
+.arkk-nav-toggle {
+  display: inline-grid; place-items: center;
+  width: 28px; height: 28px; border-radius: 7px; flex-shrink: 0;
+  color: var(--ink-4);
+  transition: background var(--dur-micro) var(--ease-house), color var(--dur-micro) var(--ease-house);
+}
+.arkk-nav-toggle:hover { background: var(--bg-2); color: var(--ink); }
+.arkk-nav-toggle svg { width: 16px; height: 16px; transition: transform var(--dur-ui) var(--ease-house); }
+:root[data-nav-collapsed="1"] .arkk-nav-toggle svg { transform: rotate(180deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  .app { transition: none; }
+  .arkk-nav-toggle svg { transition: none; }
+}

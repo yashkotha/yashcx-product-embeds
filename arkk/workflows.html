@@ -1,0 +1,938 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<script>try{if(localStorage.getItem('arkk.nav.collapsed')==='1')document.documentElement.dataset.navCollapsed='1';}catch(e){}</script>
+<script>
+  /* No-flash boot guard for the panel-collapse prefs (§3.4) - read + apply
+     BEFORE first paint so palette/dock never flash open then collapse. */
+  try {
+    var __pal = localStorage.getItem('arkk.workflows.paletteCollapsed');
+    var __dock = localStorage.getItem('arkk.workflows.dockCollapsed');
+    document.documentElement.dataset.wfPal = __pal === 'true' ? '1' : '0';
+    document.documentElement.dataset.wfDock = __dock === 'true' ? '1' : '0';
+  } catch (e) {}
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Workflows | Arkk Transfer Pricing</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  /* Chrome reconciliation: left sidebar is the ONE navigation; the topbar
+     segmented tab strip duplicated it and is removed. Collapse the topbar
+     grid from 3 tracks (nav | search | actions) to 2 (search | actions)
+     without touching shared.css (LAW, never edited). */
+  .topbar { grid-template-columns: 1fr auto !important; }
+</style>
+<link rel="stylesheet" href="arkk-nav.css" />
+<script defer src="arkk-data.js"></script>
+<script defer src="arkk.js"></script>
+<script defer src="arkk-nav.js"></script>
+<script defer src="arkk-chrome.js"></script>
+<style>
+  /* =====================================================================
+     Copied verbatim (page-local, not in shared.css) from matrix-edit.html -
+     the Arkk form idiom reused for the node config dock. shared.css is LAW
+     and stays untouched; these rules are duplicated per matrix-edit.html's
+     own page-local <style> block, unchanged.
+     ===================================================================== */
+  .edit-card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md);
+    padding: 0;
+  }
+  .edit-head {
+    padding: 18px 22px 16px;
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, var(--bg-3), var(--surface));
+  }
+  .edit-head .label {
+    font-family: "Geist Mono", monospace; font-size: 10px;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3);
+  }
+  .edit-head h2 {
+    font-size: 24px; font-weight: 500; margin: 6px 0 0;
+    letter-spacing: -0.02em;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .edit-head h2 .arrow { color: var(--ink-4); font-weight: 400; }
+  .edit-body { padding: 22px; }
+
+  .rule-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  }
+  .rule-option {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    cursor: pointer;
+    text-align: left;
+    transition: border-color .15s, background .15s, transform .12s;
+    position: relative;
+  }
+  .rule-option:hover { background: var(--bg-3); border-color: oklch(82% 0.04 254); }
+  .rule-option .desc { color: var(--ink-3); font-size: 12px; }
+  .rule-option.selected {
+    border-color: var(--brand);
+    background: var(--brand-soft);
+    box-shadow: 0 0 0 4px oklch(54% 0.19 254 / 0.10);
+  }
+  .rule-option.selected::after {
+    content: ""; position: absolute; top: 12px; right: 12px;
+    width: 18px; height: 18px; border-radius: 5px;
+    background-color: var(--brand);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><path d='M5 12l4 4 10-10'/></svg>");
+    background-size: 12px;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+  .rule-option { transition: transform var(--dur-ui) var(--ease-house), background .15s, border-color .15s; }
+  .rule-option:hover { transform: translateY(-1px); }
+
+  /* =====================================================================
+     WORKFLOWS - reconstructed to the layer architecture in ARCHITECTURE.md.
+     Two strictly separated layers: #wfWorld (the ONLY transformed element -
+     nodes + edges only) and #wfOverlay (viewport-fixed chrome, a sibling of
+     the world, never a descendant of it). No colored borders, no colored
+     edge strokes (hard rules, see §1 / §12).
+     ===================================================================== */
+
+  /* --- 2.1 No-page-scroll frame - page-local override of shared.css's
+     page-scrolls-the-document default. Root clip lives on .app so the whole
+     document can never scroll on this page; every link in the chain below
+     carries min-height:0 (mandatory - the single most common regression). */
+  html, body { height: 100%; }
+  .app { height: 100vh; min-height: 0; overflow: hidden; }
+  .main { height: 100%; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+  .page.wf-page {
+    flex: 1; min-height: 0;
+    display: flex; flex-direction: column;
+    padding: 0 !important;
+    overflow: hidden;
+    /* DEFECT FIX (full-bleed workspace): shared.css's generic .page rule
+       sets max-width:1480px + margin:0 auto for prose-style pages. .main
+       is a column flexbox here (line above), so those auto margins center
+       this flex item on the cross axis and shrink it to content width -
+       that's the ~93px dead gutter on both sides. Kill both so the
+       workspace stretches genuinely edge-to-edge. */
+    max-width: none;
+    margin: 0;
+    width: 100%;
+  }
+  .wf-workspace { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* --- 2.2 Slim workspace header, single row, 56-60px --- */
+  .wf-header {
+    flex-shrink: 0;
+    height: 58px;
+    display: flex; align-items: center; gap: 10px;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+    overflow: hidden;
+  }
+  .wf-crumb {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12.5px; color: var(--ink-3);
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .wf-crumb a { color: var(--ink-3); }
+  .wf-crumb a:hover { color: var(--ink); }
+  .wf-crumb .sep { color: var(--ink-4); }
+  .wf-crumb .here { color: var(--ink); font-weight: 500; }
+  .wf-name-input {
+    font-size: 13px; font-weight: 500; color: var(--ink);
+    border: 1px solid transparent; background: transparent;
+    border-radius: 6px; padding: 5px 8px;
+    max-width: 220px; flex-shrink: 1; min-width: 0;
+    transition: background var(--dur-micro) var(--ease-house), border-color var(--dur-micro) var(--ease-house);
+  }
+  .wf-name-input:hover { background: var(--bg-2); }
+  .wf-name-input:focus { outline: none; background: var(--bg-3); border-color: var(--line); }
+  .wf-header .wf-seg { flex-shrink: 0; margin-left: 4px; }
+  .wf-header-spacer { flex: 1; min-width: 8px; }
+  .wf-header-icons { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+  .wf-header-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin-left: 6px; padding-left: 10px; border-left: 1px solid var(--line); }
+  .wf-header-actions .btn { padding: 6px 11px; font-size: 12.5px; }
+
+  /* --- Guide popover --- */
+  .wf-guide-pop {
+    position: fixed;
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md);
+    box-shadow: var(--shadow-pop);
+    padding: 16px 18px;
+    width: 300px;
+    z-index: 60;
+  }
+  .wf-guide-pop .ttl { font-size: 13px; font-weight: 500; color: var(--ink); margin-bottom: 6px; }
+  .wf-guide-pop .txt { font-size: 12.5px; color: var(--ink-2); line-height: 1.5; margin-bottom: 12px; }
+  .wf-guide-pop ol { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 5px; }
+  .wf-guide-pop li { font-size: 12px; color: var(--ink-3); line-height: 1.4; }
+
+  /* --- Validation bar - thin strip under the header --- */
+  .wf-validate-bar {
+    flex-shrink: 0;
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--peach-line);
+    background: var(--peach-soft);
+  }
+  .wf-validate-bar[hidden] { display: none; }
+  .wf-validate-links { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; color: var(--peach-ink); }
+  .wf-validate-links .sep { color: var(--peach-ink); opacity: 0.5; }
+  .wf-validate-links a { color: var(--peach-ink); text-decoration: underline; cursor: pointer; }
+
+  /* --- 1.1 wf-body: CSS grid, palette | canvas-region | dock --- */
+  .wf-body {
+    flex: 1; min-height: 0;
+    display: grid;
+    /* QA fix: at the embed's ~1076px width, palette(240) + dock(360) left
+       the canvas only ~236px - not enough to show even one template card
+       plus a peek of the next, so the "start" screen read as clipped rather
+       than pannable. Dock down to 320px so the canvas gets meaningfully
+       more room; the dock's own content already wraps at this width. */
+    grid-template-columns: var(--pal-w, 240px) 1fr var(--dock-w, 320px);
+    transition: grid-template-columns var(--dur-ui) var(--ease-house);
+  }
+  .wf-body.pal-collapsed  { --pal-w: 56px; }
+  .wf-body.dock-collapsed { --dock-w: 44px; }
+  @media (prefers-reduced-motion: reduce) { .wf-body { transition: none; } }
+
+  /* --- 3.2 Left palette --- */
+  .wf-palette {
+    border-right: 1px solid var(--line);
+    overflow-y: auto; overflow-x: hidden;
+    min-height: 0; min-width: 0;
+    padding: 12px 10px 20px;
+    background: var(--bg-3);
+  }
+  .wf-palette-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 6px 10px; }
+  .wf-palette-head .heading { padding: 0; }
+  .wf-panel-toggle {
+    width: 26px; height: 26px; border-radius: 6px; flex-shrink: 0;
+    display: inline-grid; place-items: center; color: var(--ink-3);
+    transition: background var(--dur-micro) var(--ease-house), color var(--dur-micro) var(--ease-house);
+  }
+  .wf-panel-toggle:hover { background: var(--bg-2); color: var(--ink); }
+  .wf-panel-toggle svg { width: 14px; height: 14px; transition: transform var(--dur-ui) var(--ease-house); }
+  .wf-body.pal-collapsed #wfPalette .wf-panel-toggle svg { transform: rotate(180deg); }
+  .wf-body.pal-collapsed .wf-palette { padding: 10px 4px; }
+  .wf-body.pal-collapsed .wf-palette-head { justify-content: center; padding: 2px 0 10px; }
+  /* DEFECT FIX (collapsed rail): the panel-level "Steps" heading was never
+     hidden when collapsed, unlike the per-category headings two rules
+     below - it stayed full-size, got centered by the rule above inside a
+     48px content box (56px rail minus padding) alongside the 26px toggle,
+     and the combined width bled past both edges of the rail. Collapsed
+     state is chevron-only; the label survives as the button's title/aria
+     tooltip (see workflows.js togglePalette). */
+  .wf-body.pal-collapsed .wf-palette-head .heading { display: none; }
+  .wf-palette-cat { margin-bottom: 16px; }
+  /* Hairline group separators, collapsed rail only - expanded state already
+     reads its groups from the mono category labels (Triggers/Sources/...);
+     collapsed strips those labels down to icon tiles, so a divider is the
+     only remaining signal that a new group started. */
+  .wf-body.pal-collapsed .wf-palette-cat + .wf-palette-cat {
+    border-top: 1px solid var(--line);
+    margin-top: 10px;
+    padding-top: 10px;
+  }
+  .wf-palette-cat .heading {
+    font-family: "Geist Mono", monospace; font-size: 10px;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-4);
+    padding: 0 8px 8px;
+  }
+  .wf-body.pal-collapsed .wf-palette-cat .heading { display: none; }
+
+  /* Markup contract fix (bug 2.1): the label is always a real element with a
+     class, and the container is overflow:hidden;white-space:nowrap - so mid-
+     transition clipping is structurally impossible. */
+  .palette-node {
+    width: 100%;
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 8px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+    color: var(--ink-2);
+    font-size: 12.5px;
+    overflow: hidden; white-space: nowrap;
+    transition: background var(--dur-micro) var(--ease-house), border-color var(--dur-micro) var(--ease-house), transform var(--dur-micro) var(--ease-house);
+  }
+  .palette-node:hover { background: var(--surface); border-color: var(--line); transform: translateY(-1px); }
+  .palette-node .pnode-label { overflow: hidden; text-overflow: ellipsis; }
+  .palette-node .pnode-grab { margin-left: auto; color: var(--ink-4); flex-shrink: 0; }
+  .wf-body.pal-collapsed .palette-node { justify-content: center; padding: 6px 0; }
+  .wf-body.pal-collapsed .palette-node .pnode-label,
+  .wf-body.pal-collapsed .palette-node .pnode-grab { display: none; }
+  .wf-body.pal-collapsed .palette-node .wf-chip { margin: 0 auto; }
+
+  /* --- Node type icon tiles: ONE spec for every family, every surface ---
+     Uniform 26px tile, var(--r-sm) radius, no border. Fill = the family's
+     ladder hue at 8-12% alpha (muted tint, never a solid saturated block).
+     Glyph = the product's line-icon language (stroke, 1.7, round caps) in
+     the family's ink at AA-readable depth on the tint. Palette, canvas
+     cards, config dock and template gallery all share these exact rules. */
+  .wf-chip {
+    width: 26px; height: 26px;
+    border-radius: var(--r-sm);
+    border: 0;
+    display: grid; place-items: center;
+    flex-shrink: 0;
+  }
+  .wf-chip svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.7; }
+  .wf-chip.t-trigger  { background: oklch(76% 0.13 60 / 0.12);  color: var(--peach-ink); }
+  .wf-chip.t-source   { background: oklch(54% 0.19 254 / 0.10); color: var(--brand-2); }
+  .wf-chip.t-transform{ background: oklch(72% 0.12 295 / 0.10); color: var(--lilac-ink); }
+  .wf-chip.t-check    { background: oklch(64% 0.18 25 / 0.10);  color: var(--coral-ink); }
+  .wf-chip.t-approval { background: oklch(72% 0.13 162 / 0.12); color: var(--mint-ink); }
+  .wf-chip.t-export   { background: oklch(18% 0.014 254 / 0.08); color: var(--ink-2); }
+
+  /* --- 1.1 Canvas region: viewport (top) + drawer (bottom, sibling) --- */
+  .wf-canvas-region { min-height: 0; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* THE WINDOW - never scrolls, no scrollbars ever. Only #wfWorld inside it
+     ever receives a transform. */
+  .wf-viewport {
+    position: relative;
+    flex: 1; min-height: 0; min-width: 0;
+    overflow: hidden;
+    background: var(--bg);
+    background-image: radial-gradient(var(--line-2) 1px, transparent 1px);
+    background-size: 20px 20px;
+    cursor: grab;
+    touch-action: none;
+  }
+  .wf-viewport.panning { cursor: grabbing !important; }
+
+  /* CANVAS WORLD LAYER - the only element with a pan/zoom transform. */
+  .wf-world {
+    position: absolute; top: 0; left: 0;
+    transform-origin: 0 0;
+    will-change: auto;
+    z-index: 0;
+  }
+  .wf-world.transforming { will-change: transform; }
+
+  .wf-edges { position: absolute; inset: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; }
+  .wf-edges path.edge {
+    fill: none;
+    /* §7.1 - edges scale uniformly with the world now (no non-scaling-stroke):
+       one mental model, the whole world scales, Figma-parity. Neutral ink
+       only - no hue, ever (hard rule). */
+    stroke: oklch(18% 0.014 254 / 0.30);
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    transition: stroke var(--dur-micro) var(--ease-house);
+  }
+  .wf-edges path.edge.exception { stroke-dasharray: 5 5; }
+  .wf-edges path.edge.rubber    { stroke: oklch(18% 0.014 254 / 0.22); stroke-dasharray: 3 5; pointer-events: none; }
+  .wf-edges path.edge.hover     { stroke: oklch(18% 0.014 254 / 0.45); }
+  .wf-edges path.edge.selected  { stroke: oklch(18% 0.014 254 / 0.62); stroke-width: 2.25; }
+  .wf-edges path.edge-hit { fill: none; stroke: transparent; stroke-width: 12; pointer-events: stroke; cursor: pointer; }
+  .wf-edge-del {
+    position: absolute; transform: translate(-50%, -50%); z-index: 4;
+    width: 24px; height: 24px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-2);
+    color: var(--ink-3);
+    transition: color var(--dur-micro) var(--ease-house), background var(--dur-micro) var(--ease-house);
+  }
+  .wf-edge-del:hover { color: var(--coral-ink); background: var(--coral-soft); }
+  .wf-edge-del svg { width: 13px; height: 13px; }
+  .wf-edge-pill {
+    position: absolute; z-index: 4;
+    transform: translate(-50%, -50%);
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 999px; padding: 2px 8px;
+    font-family: "Geist Mono", monospace; font-size: 11px; color: var(--ink-2);
+    white-space: nowrap;
+    box-shadow: var(--shadow-1);
+  }
+  .wf-edge-pill.exception { color: var(--peach-ink); border-color: var(--peach-line); background: var(--peach-soft); }
+
+  /* --- Node card (world child - moves and scales with the world) --- */
+  .wf-node {
+    position: absolute;
+    width: 208px; min-height: 66px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    box-shadow: var(--shadow-1);
+    padding: 10px 12px 9px;
+    cursor: pointer;
+    user-select: none;
+    z-index: 1;
+    transition: transform var(--dur-micro) var(--ease-house), box-shadow var(--dur-micro) var(--ease-house);
+  }
+  .wf-node:hover { transform: translateY(-1px); box-shadow: var(--shadow-2); }
+  .wf-node.selected { box-shadow: inset 0 0 0 2px var(--brand), var(--shadow-2); }
+  .wf-node.sim-running { box-shadow: 0 0 0 4px var(--brand-soft), var(--shadow-2); }
+  .wf-node.wide { width: 224px; }
+  .wf-node.entering { opacity: 0; transform: translateY(12px); }
+  .wf-node-head { display: flex; align-items: center; gap: 8px; }
+  .wf-node-head .nm {
+    flex: 1; min-width: 0; font-size: 13px; font-weight: 500; color: var(--ink);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .wf-node-head .kebab { color: var(--ink-4); flex-shrink: 0; width: 20px; height: 20px; display: grid; place-items: center; border-radius: 5px; }
+  .wf-node-head .kebab:hover { background: var(--bg-2); color: var(--ink); }
+  .wf-node-sum { font-size: 11.5px; color: var(--ink-3); margin-top: 3px; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .wf-node-foot { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 8px; }
+  .wf-node-foot .status-pill { padding: 2px 8px; font-size: 10.5px; }
+  .wf-node-foot .wf-count { font-family: "Geist Mono", monospace; font-size: 11px; color: var(--ink-2); background: var(--bg-2); border-radius: 999px; padding: 2px 8px; }
+
+  /* Ports are integrated nubs - small tabs that grow out of the card edge
+     and share its hairline, never floating dots. State is a muted tint
+     (pending = peach-soft, hover/wiring = brand-soft), no saturated fills. */
+  .wf-port {
+    position: absolute;
+    width: 7px; height: 18px;
+    top: 50%; margin-top: -9px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    box-shadow: none;
+    cursor: crosshair;
+    transition: background var(--dur-micro) var(--ease-house),
+                border-color var(--dur-micro) var(--ease-house);
+  }
+  .wf-port::after { content: ''; position: absolute; inset: -6px; }
+  .wf-port.in  { left: -7px;  border-right: 0; border-radius: 5px 0 0 5px; }
+  .wf-port.out { right: -7px; border-left: 0;  border-radius: 0 5px 5px 0; }
+  .wf-port.out.exc { top: 70%; }
+  .wf-port.out.meets { top: 30%; }
+  .wf-port.connected { background: var(--bg-2); }
+  .wf-port.unconnected { background: var(--peach-soft); border-color: var(--peach-line); }
+  .wf-port:hover, .wf-port.active {
+    background: var(--brand-soft);
+    border-color: var(--brand-line);
+  }
+
+  .wf-draft .wf-node-head .nm { opacity: 0.92; }
+  .wf-node.draft { background: var(--lilac-soft); }
+  .wf-node.draft .wf-chip { opacity: 0.9; }
+
+  /* --- Dropzone (empty/first-run teaching) - world child, board content --- */
+  .wf-dropzone {
+    position: absolute;
+    border: 1.5px dashed var(--line);
+    border-radius: var(--r-md);
+    display: flex; align-items: center; justify-content: center;
+    text-align: center;
+    color: var(--ink-3);
+    font-size: 12.5px;
+    padding: 14px;
+    z-index: 1;
+    transition: border-color var(--dur-micro) var(--ease-house), background var(--dur-micro) var(--ease-house);
+  }
+  .wf-dropzone:hover { border-color: oklch(82% 0.04 254); background: var(--bg-3); }
+
+  /* --- Teaching checklist card - viewport overlay so it never pans away --- */
+  .wf-checklist-card {
+    position: absolute;
+    width: 280px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    box-shadow: var(--shadow-2);
+    padding: 4px 16px;
+    z-index: 5;
+  }
+  .wf-checklist-card .wf-cc-head {
+    font-family: "Geist Mono", monospace; font-size: 10px;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-4);
+    padding: 12px 0 4px;
+  }
+  .wf-checklist-card .checklist-row { padding: 9px 0; grid-template-columns: 20px 1fr auto; gap: 10px; }
+  .wf-checklist-card .checklist-row .mark { width: 18px; height: 18px; font-size: 10px; }
+  .wf-checklist-card .checklist-row .body { font-size: 12px; }
+  .wf-checklist-card .checklist-row .body .ttl { font-weight: 400; }
+
+  /* --- Gallery sheet - overlay of the viewport (deliberate blocking modal) --- */
+  .wf-gallery-sheet {
+    position: absolute; inset: 0; z-index: 7;
+    background: var(--surface);
+    overflow-y: auto;
+    padding: 22px 26px 26px;
+  }
+  .wf-gallery-sheet[hidden] { display: none; }
+  .wf-gallery-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 16px; }
+  .wf-gallery-head h3 { font-size: 16px; font-weight: 500; margin: 0; letter-spacing: -0.01em; }
+  .wf-gallery-head .sub { font-size: 12.5px; color: var(--ink-3); margin-top: 3px; }
+  .wf-gallery-close { font-size: 12px; }
+  .wf-gallery { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .tpl-card {
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: var(--surface);
+    padding: 14px 16px 12px;
+    cursor: pointer;
+    transition: transform var(--dur-micro) var(--ease-house), border-color var(--dur-micro) var(--ease-house);
+  }
+  .tpl-card:hover { transform: translateY(-1px); border-color: oklch(82% 0.04 254); }
+  .tpl-card.blank { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; min-height: 118px; }
+  .tpl-card .ico-wrap { width: 26px; height: 26px; border-radius: var(--r-sm); display: grid; place-items: center; margin-bottom: 10px; }
+  .tpl-card .ttl { font-size: 14px; font-weight: 500; color: var(--ink); }
+  .tpl-card .desc { font-size: 12px; color: var(--ink-3); margin-top: 3px; line-height: 1.4; min-height: 32px; }
+  .tpl-card .touches { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+  .tpl-card .footer-meta { display: flex; align-items: center; gap: 8px; margin-top: 11px; font-size: 12px; color: var(--ink-3); }
+  .tpl-card .footer-meta .sep { color: var(--ink-4); }
+  .tpl-card .footer-meta .pill { font-size: 12px; }
+
+  /* --- 1.1 Overlay - viewport-fixed chrome, sibling of #wfWorld, NEVER a
+     descendant of it. Mathematically fixed to the viewport rect because the
+     viewport itself never scrolls or transforms (the bug-2.3/2.4 fix). --- */
+  .wf-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+  .wf-overlay > * { pointer-events: auto; }
+
+  .wf-cam-controls {
+    position: absolute; left: 14px; top: 14px;
+    display: flex; align-items: center; gap: 2px; padding: 3px;
+    background: var(--surface-glass, var(--surface));
+    backdrop-filter: saturate(140%) blur(14px);
+    -webkit-backdrop-filter: saturate(140%) blur(14px);
+    border: 1px solid var(--line); border-radius: 999px;
+    box-shadow: var(--shadow-2);
+  }
+  .wf-cam-controls .icon-btn { width: 28px; height: 28px; }
+  .wf-cam-controls .icon-btn:disabled { opacity: 0.35; cursor: default; }
+
+  .wf-zoom {
+    position: absolute; left: 14px; bottom: 14px;
+    display: flex; align-items: center; gap: 2px; padding: 3px;
+    background: var(--surface-glass, var(--surface));
+    backdrop-filter: saturate(140%) blur(14px);
+    -webkit-backdrop-filter: saturate(140%) blur(14px);
+    border: 1px solid var(--line); border-radius: 999px;
+    box-shadow: var(--shadow-2);
+  }
+  .wf-zoom .icon-btn { width: 28px; height: 28px; }
+  .wf-zoom .icon-btn:disabled { opacity: 0.35; cursor: default; }
+  .wf-zoom-label {
+    min-width: 46px; text-align: center;
+    font-family: "Geist Mono", monospace; font-size: 12px; color: var(--ink-2);
+    padding: 4px 6px; border-radius: 999px; border: 0; background: transparent;
+  }
+  .wf-zoom-label:hover { background: var(--bg-2); color: var(--ink); }
+  .wf-zoom-sep { color: var(--ink-4); padding: 0 2px; }
+
+  /* --- Dock --- */
+  .wf-dock { border-left: 1px solid var(--line); overflow-y: auto; overflow-x: hidden; min-height: 0; min-width: 0; display: flex; flex-direction: column; }
+  .wf-dock-empty { padding: 22px; color: var(--ink-3); font-size: 12.5px; }
+
+  .wf-assistant { display: flex; flex-direction: column; height: 100%; }
+  .wf-a-head { padding: 16px 18px 12px; border-bottom: 1px solid var(--line); position: relative; }
+  .wf-a-head .pill.lilac { margin-bottom: 8px; }
+  .wf-a-disclaimer { font-size: 11.5px; color: var(--ink-3); line-height: 1.45; }
+  .wf-a-body { flex: 1; overflow-y: auto; padding: 14px 18px; display: flex; flex-direction: column; gap: 12px; }
+  .wf-a-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .wf-a-chip {
+    font-size: 11.5px; padding: 5px 10px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--surface); color: var(--ink-2);
+    cursor: pointer;
+    transition: background var(--dur-micro) var(--ease-house), border-color var(--dur-micro) var(--ease-house);
+  }
+  .wf-a-chip:hover { background: var(--bg-2); border-color: oklch(82% 0.04 254); }
+  .wf-trace { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--ink-3); }
+  .wf-trace-line { opacity: 0; transform: translateY(4px); transition: opacity var(--dur-ui) var(--ease-house), transform var(--dur-ui) var(--ease-house); }
+  .wf-trace-line.in { opacity: 1; transform: none; }
+  .wf-a-msg { font-size: 12.5px; color: var(--ink-2); line-height: 1.5; }
+  .wf-a-suggestions { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
+  .wf-a-suggestion { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--bg-3); }
+  .wf-a-suggestion.resolved { background: var(--mint-soft); border-color: var(--mint-line); }
+  .wf-a-suggestion .txt { font-size: 12.5px; color: var(--ink-2); line-height: 1.45; }
+  .wf-a-suggestion .actions { display: flex; gap: 6px; margin-top: 8px; }
+  .wf-a-suggestion .actions .btn { padding: 5px 10px; font-size: 12px; }
+  .wf-a-foot { border-top: 1px solid var(--line); padding: 12px 18px 16px; }
+  .wf-a-input {
+    width: 100%; resize: none; border: 1px solid var(--line); border-radius: 10px;
+    padding: 10px 12px; font-size: 13px; line-height: 1.45; font-family: inherit; color: var(--ink);
+    background: var(--surface);
+  }
+  .wf-a-input:focus { outline: none; border-color: var(--brand-line); }
+  /* Placeholder must read clearly against the white field, not the dimmed
+     browser default - same secondary-ink weight used everywhere else, never
+     smaller than the typed text itself. */
+  .wf-a-input::placeholder { color: var(--ink-3); opacity: 1; font-size: 13px; }
+  .wf-a-send { display: flex; justify-content: flex-end; margin-top: 8px; }
+
+  /* --- Config dock --- */
+  .wf-config-wrap { padding: 16px 18px; display: flex; flex-direction: column; gap: 14px; }
+  .wf-config-field { display: flex; flex-direction: column; gap: 6px; }
+  .wf-config-field label { font-size: 11px; color: var(--ink-3); font-family: "Geist Mono", monospace; letter-spacing: 0.04em; text-transform: uppercase; }
+  .wf-config-field input[type="text"], .wf-config-field input[type="number"] {
+    border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
+    font-size: 12.5px; color: var(--ink); background: var(--surface);
+  }
+  .wf-config-field input:focus { outline: none; border-color: var(--brand-line); }
+  .wf-config-field .hint { font-size: 11px; color: var(--ink-4); }
+  .wf-adv-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--line-2); font-size: 12.5px; }
+  .wf-adv-row:last-child { border-bottom: 0; }
+  .wf-adv-row .k { color: var(--ink-3); }
+  .wf-adv-row .v { font-family: "Geist Mono", monospace; color: var(--ink-2); }
+  .wf-toggle {
+    width: 34px; height: 20px; border-radius: 999px; background: var(--bg-2); border: 1px solid var(--line);
+    position: relative; cursor: pointer; flex-shrink: 0;
+    transition: background var(--dur-micro) var(--ease-house);
+  }
+  .wf-toggle::after {
+    content: ""; position: absolute; top: 1px; left: 1px; width: 16px; height: 16px; border-radius: 50%;
+    background: var(--surface); box-shadow: var(--shadow-1);
+    transition: transform var(--dur-micro) var(--ease-house);
+  }
+  .wf-toggle.on { background: var(--brand); border-color: var(--brand); }
+  .wf-toggle.on::after { transform: translateX(14px); background: white; }
+
+  /* --- 3.3 Assistant/config dock collapse (right edge tab) --- */
+  .wf-dock-tab {
+    display: none;
+    writing-mode: vertical-rl; transform: rotate(180deg);
+    font-size: 12px; font-weight: 500; color: var(--ink-2);
+    padding: 14px 0; cursor: pointer; user-select: none;
+    height: 100%; align-items: center; justify-content: center; gap: 8px;
+    overflow: hidden; white-space: nowrap;
+  }
+  .wf-body.dock-collapsed .wf-dock > :not(.wf-dock-tab) { display: none; }
+  .wf-body.dock-collapsed .wf-dock-tab { display: flex; }
+  .wf-dock-tab:hover { color: var(--ink); background: var(--bg-2); }
+  .wf-dock-tab svg { width: 13px; height: 13px; transform: rotate(90deg); flex-shrink: 0; }
+  .wf-dock-collapse-btn { position: absolute; top: 14px; right: 14px; }
+
+  /* --- Draft bar (viewport overlay) --- */
+  .wf-draft-bar {
+    position: absolute; left: 16px; right: 16px; bottom: 16px;
+    background: var(--lilac-soft); border: 1px solid oklch(86% 0.08 295);
+    border-radius: var(--r-md);
+    padding: 12px 16px;
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    box-shadow: var(--shadow-2);
+    opacity: 0; transform: translateY(8px);
+    transition: opacity var(--dur-ui) var(--ease-house), transform var(--dur-ui) var(--ease-house);
+    z-index: 6;
+  }
+  .wf-draft-bar.in { opacity: 1; transform: none; }
+  .wf-draft-bar[hidden] { display: none; }
+  .wf-draft-bar .txt { font-size: 12.5px; color: var(--lilac-ink); flex: 1; min-width: 200px; }
+  .wf-draft-bar .actions { display: flex; gap: 8px; }
+  .wf-draft-bar .actions .btn { padding: 6px 12px; font-size: 12.5px; }
+
+  /* --- 4. Dry-run drawer - FLEX SIBLING of the viewport, never an overlay.
+     Opening it shrinks the viewport above it; the viewport re-clips the
+     world without reflow because the world is transformed, not laid out. --- */
+  .wf-run-drawer {
+    flex-shrink: 0;
+    height: 0;
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    border-top: 1px solid var(--line);
+    background: var(--surface);
+    transition: height var(--dur-ui) var(--ease-house);
+  }
+  .wf-run-drawer.open      { height: 280px; }
+  .wf-run-drawer.collapsed { height: 40px; }
+  .wf-run-drawer[hidden]   { display: none; }
+  .wf-run-drawer-head {
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 10px 18px; border-bottom: 1px solid var(--line);
+    min-height: 40px;
+  }
+  .wf-run-drawer.collapsed .wf-run-drawer-head { border-bottom: 0; cursor: pointer; }
+  .wf-run-drawer-head .ttl { font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 10px; overflow: hidden; white-space: nowrap; }
+  .wf-run-drawer-head .actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+  .wf-run-drawer-body { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 18px 14px; }
+  .wf-run-drawer.collapsed .wf-run-drawer-body { display: none; }
+  .wf-run-collapse-btn svg { transition: transform var(--dur-ui) var(--ease-house); }
+  .wf-run-drawer.collapsed .wf-run-collapse-btn svg { transform: rotate(180deg); }
+
+  /* --- Toast (viewport overlay) --- */
+  .wf-toast {
+    position: absolute; left: 50%; bottom: 22px;
+    transform: translateX(-50%) translateY(8px);
+    background: var(--ink); color: oklch(98% 0.005 254);
+    padding: 9px 16px; border-radius: 999px; font-size: 12.5px;
+    box-shadow: var(--shadow-pop);
+    opacity: 0;
+    transition: opacity var(--dur-ui) var(--ease-house), transform var(--dur-ui) var(--ease-house);
+    z-index: 8;
+    pointer-events: none;
+  }
+  .wf-toast.in { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .wf-toast[hidden] { display: none; }
+
+  /* --- Node kebab dropdown --- */
+  .wf-node-menu {
+    position: fixed;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    box-shadow: var(--shadow-pop);
+    padding: 5px;
+    z-index: 50;
+    min-width: 132px;
+  }
+  .wf-node-menu button {
+    display: block; width: 100%; text-align: left;
+    padding: 7px 10px; border-radius: 6px; font-size: 12.5px; color: var(--ink-2);
+  }
+  .wf-node-menu button:hover { background: var(--bg-2); color: var(--ink); }
+
+  /* --- Inline confirm popover (never a browser confirm()) --- */
+  .wf-confirm-pop {
+    position: fixed;
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md);
+    box-shadow: var(--shadow-pop);
+    padding: 14px 16px;
+    width: 260px;
+    z-index: 60;
+  }
+  .wf-confirm-pop .txt { font-size: 12.5px; color: var(--ink-2); line-height: 1.45; margin-bottom: 10px; }
+  .wf-confirm-pop .actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .wf-confirm-pop .actions .btn { padding: 5px 11px; font-size: 12px; }
+
+  /* --- Affirmative-commit spring settle (used on Keep draft / owner correction / add approval) --- */
+  .wf-spring-settle { animation: wf-settle var(--dur-ui) var(--ease-spring); }
+  @keyframes wf-settle { from { transform: scale(0.98); } to { transform: scale(1); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .wf-body { transition: none; }
+    .wf-run-drawer { transition: none; }
+    .wf-node.entering { opacity: 1 !important; transform: none !important; }
+    .wf-trace-line { opacity: 1 !important; transform: none !important; transition: none !important; }
+    .wf-draft-bar, .wf-toast { transition: none !important; }
+    .wf-spring-settle { animation: none !important; }
+  }
+
+  /* Page-local secondary-action treatment: paired secondary actions
+     (Cancel / Back / Reset) must read as buttons, not bare text.
+     Neutral low-alpha ink fill, standard hairline, same geometry as the
+     adjacent primary. Hover deepens the fill. */
+  .btn.soft {
+    background: oklch(18% 0.014 254 / 0.05);
+    border-color: var(--line);
+    color: var(--ink-2);
+    box-shadow: none;
+  }
+  .btn.soft:hover {
+    background: oklch(18% 0.014 254 / 0.09);
+    border-color: oklch(87% 0.012 254);
+    color: var(--ink);
+  }
+  .btn.soft:focus-visible {
+    outline: 2px solid oklch(54% 0.19 254 / 0.3);
+    outline-offset: 1px;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Primary (dashboard) navigation -->
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <div class="logo">fs</div>
+      <button class="ws-switch">
+        Northgate
+        <svg class="ico-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l5 5 5-5"/></svg>
+      </button>
+    </div>
+
+    <div class="sidebar-section">
+      <a class="nav-item" href="./">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 9.5V21h5v-7h4v7h5V9.5"/></svg>
+        <span class="nav-label">Dashboard</span>
+      </a>
+      <a class="nav-item" href="#" data-focus-search>
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <span class="nav-label">Search</span>
+        <span class="count">⌘K</span>
+      </a>
+      <a class="nav-item" href="#" data-quiet="Inbox">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l3-9h12l3 9v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1zM3 13h6l1 3h4l1-3h6"/></svg>
+        <span class="nav-label">Inbox</span>
+        <span class="count">3</span>
+      </a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="heading">Workspace</div>
+      <a class="nav-item" href="./">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 9.5V21h5v-7h4v7h5V9.5"/></svg>
+        <span class="nav-label">Overview</span>
+      </a>
+      <a class="nav-item" href="matrix.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h6v6H4zM14 6h6v6h-6zM4 16h6v4H4zM14 16h6v4h-6z"/></svg>
+        <span class="nav-label">Cost matrix</span>
+      </a>
+      <a class="nav-item" href="transfer-pricing.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h14M14 5l3 3-3 3M21 16H7M10 19l-3-3 3-3"/></svg>
+        <span class="nav-label">Benchmarking</span>
+      </a>
+      <a class="nav-item" href="hierarchy.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="6" rx="1.3"/><rect x="3" y="15" width="6" height="6" rx="1.3"/><rect x="15" y="15" width="6" height="6" rx="1.3"/><path d="M12 9v3M6 15v-3h12v3"/></svg>
+        <span class="nav-label">Hierarchy</span>
+      </a>
+      <a class="nav-item" href="runs.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M10.2 8.7l5.4 3.3-5.4 3.3z"/></svg>
+        <span class="nav-label">Runs</span>
+      </a>
+      <a class="nav-item active" href="workflows.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h6m0 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM5 17h6m0 0a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM5 7v10"/></svg>
+        <span class="nav-label">Workflows</span>
+      </a>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="heading">Data &amp; admin</div>
+      <a class="nav-item" href="data-sources.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>
+        <span class="nav-label">Data sources</span>
+      </a>
+      <a class="nav-item" href="reports.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>
+        <span class="nav-label">Reports</span>
+      </a>
+      <a class="nav-item" href="#" data-quiet="Settings">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .4 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.4 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .4-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.4-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.4H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.4l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.4 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        <span class="nav-label">Settings</span>
+      </a>
+    </div>
+
+    <div class="sidebar-foot">
+      <div class="user-chip">TH</div>
+      <div>
+        <div class="nm">Tom Heffes</div>
+        <div class="rl">Tax Lead | Northgate</div>
+      </div>
+      <a class="more" href="#" data-quiet="Account menu" title="Account menu">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Icon rail (legacy, hidden) -->
+  <aside class="rail" aria-label="Workspace">
+    <div class="logo">fs</div>
+    <nav class="nav">
+      <a href="./" class="item" title="Overview"><svg class="ico" viewBox="0 0 24 24"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg></a>
+      <a href="matrix.html" class="item" title="Cost matrix"><svg class="ico" viewBox="0 0 24 24"><path d="M4 6h6v6H4zM14 6h6v6h-6zM4 16h6v4H4zM14 16h6v4h-6z"/></svg></a>
+      <a href="hierarchy.html" class="item" title="Hierarchy"><svg class="ico" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="6" rx="1.3"/><rect x="3" y="15" width="6" height="6" rx="1.3"/><rect x="15" y="15" width="6" height="6" rx="1.3"/><path d="M12 9v3M6 15v-3h12v3"/></svg></a>
+      <a href="runs.html" class="item" title="Runs"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M10.2 8.7l5.4 3.3-5.4 3.3z"/></svg></a>
+      <a href="workflows.html" class="item active" title="Workflows"><svg class="ico" viewBox="0 0 24 24"><path d="M5 7h6m0 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM5 17h6m0 0a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM5 7v10"/></svg></a>
+    </nav>
+    <div class="spacer"></div>
+    <a href="#" class="item" style="width: 40px; height: 40px;" title="Help" data-quiet="Help"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.4v.3M12 17h.01"/></svg></a>
+    <a href="#" class="item" style="width: 40px; height: 40px;" title="Settings" data-quiet="Settings"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .4 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.4 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .4-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.4-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.4H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.4l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.4 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></a>
+    <div class="me" title="Tom Heffes">TH</div>
+  </aside>
+
+  <main class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="brand-block">
+        <div class="logo">fs</div>
+        <button class="ws-switch">Northgate <svg class="ico-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l5 5 5-5"/></svg></button>
+      </div>
+      <div class="search">
+        <svg class="ico-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input placeholder="Jump to anything | entity, CC, transaction, run…" />
+        <span class="kbd">⌘K</span>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn" title="History"><svg class="ico" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5M12 7v6l4 2"/></svg></button>
+        <button class="icon-btn" title="Notifications"><svg class="ico" viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9zM10 21a2 2 0 0 0 4 0"/></svg></button>
+        <div class="user-chip" title="Tom Heffes">TH</div>
+      </div>
+    </div>
+
+    <div class="page wf-page">
+
+      <!-- 1.1 wf-workspace: slim header + wf-body grid. This is the whole
+           reconstructed page - no hero, no separate scrolling page below. -->
+      <section class="wf-workspace" id="wfWorkspace">
+
+        <header class="wf-header">
+          <div class="wf-crumb">
+            <a href="./">Northgate</a>
+            <span class="sep">/</span>
+            <span class="here">Workflows</span>
+          </div>
+          <input class="wf-name-input" id="wfNameInput" value="Q4 close orchestration" aria-label="Workflow name" />
+          <span class="status-pill queued" id="wfStatusPill"><span class="dot"></span>Draft</span>
+          <div class="seg wf-seg" id="wfViewSeg">
+            <button class="on" data-view="build" type="button">Build</button>
+            <button data-view="runs" type="button">Runs</button>
+          </div>
+
+          <div class="wf-header-spacer"></div>
+
+          <div class="wf-header-icons">
+            <button class="icon-btn" id="wfSimBtn" title="Run simulation" aria-label="Run simulation" type="button"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l14 8-14 8z"/></svg></button>
+            <button class="icon-btn" id="wfTemplatesBtn" title="Templates" type="button"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.4"/><rect x="14" y="3" width="7" height="7" rx="1.4"/><rect x="3" y="14" width="7" height="7" rx="1.4"/><rect x="14" y="14" width="7" height="7" rx="1.4"/></svg></button>
+            <button class="icon-btn" id="wfValidateToggleBtn" title="Validate" type="button"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg></button>
+            <button class="icon-btn" id="wfHelpBtn" title="Guide" aria-label="Guide" type="button"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.4v.3M12 17h.01"/></svg></button>
+          </div>
+
+          <div class="wf-header-actions">
+            <button class="btn" id="pageResetBtn">Reset demo</button>
+            <button class="btn" id="pageDryRunBtn">Dry run</button>
+            <button class="btn primary" id="pageSaveBtn" data-commit>Save workflow</button>
+          </div>
+        </header>
+
+        <div class="wf-validate-bar" id="wfValidateBar" hidden>
+          <span class="status-pill warn"><span class="dot"></span><span id="wfValidateCount">0 steps need attention</span></span>
+          <div class="wf-validate-links" id="wfValidateLinks"></div>
+        </div>
+
+        <!-- 1.1 wf-body: palette | canvas-region | dock -->
+        <div class="wf-body" id="wfBody">
+
+          <aside class="wf-palette" id="wfPalette"></aside>
+
+          <section class="wf-canvas-region" id="wfCanvasRegion">
+
+            <div class="wf-viewport" id="wfViewport">
+              <div class="wf-world" id="wfWorld">
+                <svg class="wf-edges" id="wfEdges"></svg>
+              </div>
+
+              <div class="wf-overlay" id="wfOverlay">
+                <div class="wf-cam-controls" role="group" aria-label="History">
+                  <button class="icon-btn" id="wfUndoBtn" aria-label="Undo" title="Undo (⌘Z)" type="button" disabled><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7L4 12l5 5M4 12h11a5 5 0 0 1 0 10h-1"/></svg></button>
+                  <button class="icon-btn" id="wfRedoBtn" aria-label="Redo" title="Redo (⌘⇧Z)" type="button" disabled><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7l5 5-5 5M20 12H9a5 5 0 0 0 0 10h1"/></svg></button>
+                </div>
+
+                <div class="wf-draft-bar" id="wfDraftBar" hidden></div>
+                <div class="wf-toast" id="wfToast" hidden></div>
+
+                <div class="wf-zoom" role="group" aria-label="Board zoom">
+                  <button class="icon-btn" id="wfZoomOut" aria-label="Zoom out" type="button">–</button>
+                  <button class="wf-zoom-label" id="wfZoomLabel" aria-label="Reset zoom to 100%" type="button">100%</button>
+                  <button class="icon-btn" id="wfZoomIn" aria-label="Zoom in" type="button">+</button>
+                  <span class="wf-zoom-sep">|</span>
+                  <button class="icon-btn" id="wfZoomFit2" aria-label="Fit board to view" type="button">Fit</button>
+                </div>
+              </div>
+
+              <div class="wf-gallery-sheet" id="wfGallery" hidden></div>
+            </div>
+
+            <div class="wf-run-drawer" id="wfRunDrawer" hidden></div>
+
+          </section>
+
+          <aside class="wf-dock" id="wfDock"></aside>
+
+        </div>
+
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<script defer src="workflows.js"></script>
+</body>
+</html>

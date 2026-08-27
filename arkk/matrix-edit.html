@@ -1,0 +1,661 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<script>try{if(localStorage.getItem('arkk.nav.collapsed')==='1')document.documentElement.dataset.navCollapsed='1';}catch(e){}</script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Edit intersection | Arkk Transfer Pricing</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  /* Chrome reconciliation: left sidebar is the ONE navigation; the topbar
+     segmented tab strip duplicated it and is removed. Collapse the topbar
+     grid from 3 tracks (nav | search | actions) to 2 (search | actions)
+     without touching shared.css (LAW, never edited). */
+  .topbar { grid-template-columns: 1fr auto !important; }
+</style>
+<link rel="stylesheet" href="arkk-nav.css" />
+<script defer src="arkk-data.js"></script>
+<script defer src="arkk.js"></script>
+<script defer src="arkk-nav.js"></script>
+<script defer src="arkk-chrome.js"></script>
+<style>
+  .split { display: grid; grid-template-columns: 1.3fr 1fr; gap: 18px; }
+  /* Interaction-layer additions (v6) */
+  .rule-option { transition: transform var(--dur-ui) var(--ease-house), background .15s, border-color .15s; }
+  .rule-option:hover { transform: translateY(-1px); }
+  .mini-matrix {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md);
+    overflow: hidden;
+  }
+  .mini-matrix table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; }
+  .mini-matrix th, .mini-matrix td {
+    padding: 9px 11px; vertical-align: middle;
+    border-right: 1px solid var(--line-2); border-bottom: 1px solid var(--line-2);
+    text-align: center; background: var(--surface);
+    color: var(--ink-3);
+  }
+  .mini-matrix th {
+    background: var(--bg-2); font-size: 10px; color: var(--ink-3);
+    letter-spacing: 0.05em; text-transform: uppercase; font-weight: 500;
+  }
+  .mini-matrix .row-name {
+    text-align: left; color: var(--ink-2); background: var(--bg-2);
+    font-size: 12px; text-transform: none; letter-spacing: 0;
+  }
+  .mini-matrix td.cell { opacity: 0.55; cursor: pointer; }
+  .mini-matrix td.cell:hover { opacity: 1; background: var(--bg-3); }
+  .mini-matrix td.cell.selected {
+    opacity: 1;
+    background: var(--brand-soft);
+    box-shadow: inset 0 0 0 2px var(--brand);
+  }
+  .mini-matrix tr:last-child td { border-bottom: 0; }
+  .mini-matrix td:last-child { border-right: 0; }
+
+  .edit-card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md);
+    padding: 0;
+  }
+  .edit-head {
+    padding: 18px 22px 16px;
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, var(--bg-3), var(--surface));
+  }
+  .edit-head .label {
+    font-family: "Geist Mono", monospace; font-size: 10px;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3);
+  }
+  .edit-head h2 {
+    font-size: 24px; font-weight: 500; margin: 6px 0 0;
+    letter-spacing: -0.02em;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .edit-head h2 .arrow { color: var(--ink-4); font-weight: 400; }
+  .edit-body { padding: 22px; }
+
+  .rule-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  }
+  .rule-option {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    cursor: pointer;
+    text-align: left;
+    transition: border-color .15s, background .15s, transform .12s;
+    position: relative;
+  }
+  .rule-option:hover { background: var(--bg-3); border-color: oklch(82% 0.04 254); }
+  .rule-option .desc { color: var(--ink-3); font-size: 12px; }
+  .rule-option.selected {
+    border-color: var(--brand);
+    background: var(--brand-soft);
+    box-shadow: 0 0 0 4px oklch(54% 0.19 254 / 0.10);
+  }
+  .rule-option.selected::after {
+    content: ""; position: absolute; top: 12px; right: 12px;
+    width: 18px; height: 18px; border-radius: 5px;
+    background-color: var(--brand);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><path d='M5 12l4 4 10-10'/></svg>");
+    background-size: 12px;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
+  .affected {
+    /* QA fix: a fixed 5-up grid divided the row evenly regardless of how
+       long each entity's name actually was, so names like "Northgate DOOEL
+       Skopje" were silently chopped mid-word with no ellipsis (inline-flex
+       chips don't render text-overflow: ellipsis, so the cut was invisible
+       until you looked closely). Flex-wrap lets each chip take exactly the
+       width its own name needs and wrap to a new row when it runs out. */
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .ent-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 8px;
+    background: var(--bg-2); border: 1px solid var(--line-2);
+    border-radius: 6px;
+    font-family: "Geist Mono", monospace; font-size: 11px;
+    color: var(--ink-2);
+    white-space: nowrap;
+    max-width: 100%;
+  }
+  .ent-chip .av {
+    width: 16px; height: 16px; border-radius: 4px;
+    background: linear-gradient(135deg, oklch(86% 0.04 254), oklch(74% 0.05 254));
+    color: var(--brand-2); display: grid; place-items: center;
+    font-family: "Geist", sans-serif; font-size: 9px; font-weight: 600;
+  }
+
+  .timeline {
+    display: flex; flex-direction: column; gap: 0;
+    margin-top: 6px;
+  }
+  .tl-item {
+    display: grid; grid-template-columns: 22px 1fr auto; gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line-2);
+    align-items: center;
+  }
+  .tl-item:last-child { border-bottom: 0; }
+  .tl-item .dot {
+    width: 9px; height: 9px; border-radius: 50%; background: var(--brand);
+    margin: 0 auto;
+    border: 2px solid var(--surface);
+    outline: 1px solid var(--brand-line);
+  }
+  .tl-item.muted .dot { background: var(--ink-4); outline-color: var(--line); }
+  .tl-item .body { font-size: 12px; color: var(--ink-2); }
+  .tl-item .body b { color: var(--ink); font-weight: 500; }
+  .tl-item .time { font-size: 11px; color: var(--ink-4); font-family: "Geist Mono", monospace; }
+
+  /* Page-local secondary-action treatment: paired secondary actions
+     (Cancel / Back / Reset) must read as buttons, not bare text.
+     Neutral low-alpha ink fill, standard hairline, same geometry as the
+     adjacent primary. Hover deepens the fill. */
+  .btn.soft {
+    background: oklch(18% 0.014 254 / 0.05);
+    border-color: var(--line);
+    color: var(--ink-2);
+    box-shadow: none;
+  }
+  .btn.soft:hover {
+    background: oklch(18% 0.014 254 / 0.09);
+    border-color: oklch(87% 0.012 254);
+    color: var(--ink);
+  }
+  .btn.soft:focus-visible {
+    outline: 2px solid oklch(54% 0.19 254 / 0.3);
+    outline-offset: 1px;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Primary (dashboard) navigation -->
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <div class="logo">fs</div>
+      <button class="ws-switch">
+        Northgate
+        <svg class="ico-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l5 5 5-5"/></svg>
+      </button>
+    </div>
+    <div class="sidebar-section">
+      <a class="nav-item" href="./">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 9.5V21h5v-7h4v7h5V9.5"/></svg>
+        <span class="nav-label">Dashboard</span>
+      </a>
+      <a class="nav-item" href="#" data-focus-search>
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <span class="nav-label">Search</span>
+        <span class="count">⌘K</span>
+      </a>
+      <a class="nav-item" href="#" data-quiet="Inbox">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l3-9h12l3 9v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1zM3 13h6l1 3h4l1-3h6"/></svg>
+        <span class="nav-label">Inbox</span>
+        <span class="count">3</span>
+      </a>
+    </div>
+    <div class="sidebar-section">
+      <div class="heading">Workspace</div>
+      <a class="nav-item" href="./">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 9.5V21h5v-7h4v7h5V9.5"/></svg>
+        <span class="nav-label">Overview</span>
+      </a>
+      <a class="nav-item active" href="matrix.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h6v6H4zM14 6h6v6h-6zM4 16h6v4H4zM14 16h6v4h-6z"/></svg>
+        <span class="nav-label">Cost matrix</span>
+      </a>
+      <a class="nav-item" href="transfer-pricing.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h14M14 5l3 3-3 3M21 16H7M10 19l-3-3 3-3"/></svg>
+        <span class="nav-label">Benchmarking</span>
+      </a>
+      <a class="nav-item" href="hierarchy.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="6" rx="1.3"/><rect x="3" y="15" width="6" height="6" rx="1.3"/><rect x="15" y="15" width="6" height="6" rx="1.3"/><path d="M12 9v3M6 15v-3h12v3"/></svg>
+        <span class="nav-label">Hierarchy</span>
+      </a>
+      <a class="nav-item" href="runs.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M10.2 8.7l5.4 3.3-5.4 3.3z"/></svg>
+        <span class="nav-label">Runs</span>
+      </a>
+      <a class="nav-item" href="workflows.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h6m0 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM5 17h6m0 0a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM5 7v10"/></svg>
+        <span class="nav-label">Workflows</span>
+      </a>
+    </div>
+    <div class="sidebar-section">
+      <div class="heading">Data &amp; admin</div>
+      <a class="nav-item" href="data-sources.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>
+        <span class="nav-label">Data sources</span>
+      </a>
+      <a class="nav-item" href="reports.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>
+        <span class="nav-label">Reports</span>
+      </a>
+      <a class="nav-item" href="#" data-quiet="Settings">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .4 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.4 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .4-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.4-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.4H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.4l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.4 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        <span class="nav-label">Settings</span>
+      </a>
+    </div>
+    <div class="sidebar-foot">
+      <div class="user-chip">TH</div>
+      <div>
+        <div class="nm">Tom Heffes</div>
+        <div class="rl">Tax Lead | Northgate</div>
+      </div>
+      <a class="more" href="#" data-quiet="Account menu" title="Account menu">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Icon rail (legacy, hidden) -->
+  <aside class="rail" aria-label="Workspace">
+    <div class="logo">fs</div>
+    <nav class="nav">
+      <a href="./" class="item" title="Overview"><svg class="ico" viewBox="0 0 24 24"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg></a>
+      <a href="matrix.html" class="item active" title="Cost matrix"><svg class="ico" viewBox="0 0 24 24"><path d="M4 6h6v6H4zM14 6h6v6h-6zM4 16h6v4H4zM14 16h6v4h-6z"/></svg></a>
+      <a href="hierarchy.html" class="item" title="Hierarchy"><svg class="ico" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="6" rx="1.3"/><rect x="3" y="15" width="6" height="6" rx="1.3"/><rect x="15" y="15" width="6" height="6" rx="1.3"/><path d="M12 9v3M6 15v-3h12v3"/></svg></a>
+      <a href="runs.html" class="item" title="Runs"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M10.2 8.7l5.4 3.3-5.4 3.3z"/></svg></a>
+      <a href="workflows.html" class="item" title="Workflows"><svg class="ico" viewBox="0 0 24 24"><path d="M5 7h6m0 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM5 17h6m0 0a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM5 7v10"/></svg></a>
+    </nav>
+    <div class="spacer"></div>
+    <a href="#" class="item" style="width: 40px; height: 40px;" title="Help" data-quiet="Help"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.4v.3M12 17h.01"/></svg></a>
+    <a href="#" class="item" style="width: 40px; height: 40px;" title="Settings" data-quiet="Settings"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .4 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.4 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .4-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.4-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.4H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.4l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.4 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></a>
+    <div class="me" title="Tom Heffes">TH</div>
+  </aside>
+
+  <main class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="brand-block">
+        <div class="logo">fs</div>
+        <button class="ws-switch">Northgate <svg class="ico-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l5 5 5-5"/></svg></button>
+      </div>
+      <div class="search">
+        <svg class="ico-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input placeholder="Search rules &amp; entities…" />
+        <span class="kbd">/</span>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn" title="Notifications"><svg class="ico" viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9zM10 21a2 2 0 0 0 4 0"/></svg></button>
+        <div class="user-chip" title="Tom Heffes">TH</div>
+      </div>
+    </div>
+
+    <div class="page">
+
+      <nav class="crumbs">
+        <a href="./">Transfer Pricing</a>
+        <span class="sep">/</span>
+        <a href="matrix.html">Cost grouping</a>
+        <span class="sep">/</span>
+        <span class="here">Principal × CFO</span>
+      </nav>
+
+      <!-- Header -->
+      <div class="page-head" data-reveal>
+        <div>
+          <div class="page-eyebrow">
+            <span>Editing 1 of 25 cells in <a href="matrix.html" style="color: var(--brand);">Cost grouping matrix</a></span>
+          </div>
+          <h1 class="page-title">Principal × CFO <em>rule</em></h1>
+          <p class="page-sub">Set the markup rule applied when entities in <b style="color: var(--ink);">Principal companies</b> incur costs allocated to the <b style="color: var(--ink);">CFO</b> cost-centre group inside <b style="color: var(--ink);">BU Operations</b>.</p>
+        </div>
+        <div class="page-meta">
+          <span class="unsaved-indicator">Unsaved</span>
+          <button class="btn">Discard</button>
+          <button class="btn primary">Save change</button>
+        </div>
+      </div>
+
+      <div class="split">
+
+        <!-- LEFT: context — mini matrix, affected entities, audit log -->
+        <div class="col gap-4" style="gap: 18px;">
+
+          <!-- Mini matrix showing context -->
+          <div class="card flush" data-reveal>
+            <div class="card-head">
+              <div class="card-title"><span class="num-badge">CONTEXT</span> You are editing one cell of this matrix</div>
+              <a class="btn ghost" style="padding: 4px 8px; font-size: 12px;" href="matrix.html">Open full matrix ↗</a>
+            </div>
+            <div class="mini-matrix" style="border-radius: 0; border: 0; border-top: 1px solid var(--line);">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="text-align: left;">Entity group</th>
+                    <th>S&amp;M</th>
+                    <th>BU Ops | CFO</th>
+                    <th>Central</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="row-name">Principal</td>
+                    <td class="cell"><span class="pill markup-7" style="opacity: 0.7;"><span class="dot"></span> +7%</span></td>
+                    <td class="cell selected"><span class="pill at-cost"><span class="dot"></span> At cost</span></td>
+                    <td class="cell"><span class="pill markup-5" style="opacity: 0.7;"><span class="dot"></span> +5%</span></td>
+                  </tr>
+                  <tr>
+                    <td class="row-name">Routine</td>
+                    <td class="cell"><span class="pill markup-7" style="opacity: 0.7;"><span class="dot"></span> +7%</span></td>
+                    <td class="cell"><span class="pill markup-5" style="opacity: 0.7;"><span class="dot"></span> +5%</span></td>
+                    <td class="cell"><span class="pill at-cost" style="opacity: 0.7;"><span class="dot"></span> At cost</span></td>
+                  </tr>
+                  <tr>
+                    <td class="row-name">Holding</td>
+                    <td class="cell"><span class="pill ignore" style="opacity: 0.7;"><span class="dot"></span> Ignore</span></td>
+                    <td class="cell"><span class="pill exclude" style="opacity: 0.7;"><span class="dot"></span> Exclude</span></td>
+                    <td class="cell"><span class="pill exclude" style="opacity: 0.7;"><span class="dot"></span> Exclude</span></td>
+                  </tr>
+                  <tr>
+                    <td class="row-name">Legacy</td>
+                    <td class="cell"><span class="pill markup-7" style="opacity: 0.7;"><span class="dot"></span> +7%</span></td>
+                    <td class="cell"><span class="pill markup-5" style="opacity: 0.7;"><span class="dot"></span> +5%</span></td>
+                    <td class="cell"><span class="pill at-cost" style="opacity: 0.7;"><span class="dot"></span> At cost</span></td>
+                  </tr>
+                  <tr>
+                    <td class="row-name">Default</td>
+                    <td class="cell"><span class="pill ignore" style="opacity: 0.7;"><span class="dot"></span> Ignore</span></td>
+                    <td class="cell"><span class="pill ignore" style="opacity: 0.7;"><span class="dot"></span> Ignore</span></td>
+                    <td class="cell"><span class="pill ignore" style="opacity: 0.7;"><span class="dot"></span> Ignore</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Affected entities -->
+          <div class="card flush" data-reveal>
+            <div class="card-head">
+              <div class="card-title"><span class="num-badge">SCOPE</span> Entities affected by this rule</div>
+              <span class="count">5 entities | £ 38.2 m gross</span>
+            </div>
+            <div style="padding: 14px 18px 18px;">
+              <p class="muted" style="margin: 0 0 10px; font-size: 12px;">Members of <b style="color: var(--ink);">Principal companies</b> that hold CFO-allocated costs in Q4.</p>
+              <div class="affected">
+                <span class="ent-chip"><span class="av">CF</span> CONNECT FINCO (LUX)</span>
+                <span class="ent-chip"><span class="av">DK</span> Northgate DOOEL Skopje</span>
+                <span class="ent-chip"><span class="av">IS</span> Northgate Solutions doo</span>
+                <span class="ent-chip"><span class="av">BH</span> Northgate BH d.o.o.</span>
+                <span class="ent-chip"><span class="av">CB</span> Connect Bidco</span>
+              </div>
+
+              <hr class="hr" style="margin: 16px 0;" />
+
+              <p class="muted" style="margin: 0 0 8px; font-size: 12px;">Impact at current rule (<b style="color: var(--ink);">At cost</b>)</p>
+              <div class="bars">
+                <!-- Group 3 fix: width = value / max(all values), verified per bar
+                     (max = CONNECT FINCO £14.2m). Previous values (86/68/41/22/14%)
+                     did not correspond to any consistent scale against the £ figures. -->
+                <div class="bar-row"><div class="bar-track"><div class="bar-fill" data-to="100%" style="width: 0%;"></div></div><span class="val">CONNECT FINCO | £ 14.2m</span></div>
+                <div class="bar-row"><div class="bar-track"><div class="bar-fill" data-to="78.9%" style="width: 0%;"></div></div><span class="val">Northgate Solutions | £ 11.2m</span></div>
+                <div class="bar-row"><div class="bar-track"><div class="bar-fill" data-to="47.9%" style="width: 0%;"></div></div><span class="val">Connect Bidco | £ 6.8m</span></div>
+                <div class="bar-row"><div class="bar-track"><div class="bar-fill" data-to="25.4%" style="width: 0%;"></div></div><span class="val">DOOEL Skopje | £ 3.6m</span></div>
+                <div class="bar-row"><div class="bar-track"><div class="bar-fill" data-to="16.9%" style="width: 0%;"></div></div><span class="val">Northgate BH | £ 2.4m</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Audit log -->
+          <div class="card flush" data-reveal>
+            <div class="card-head">
+              <div class="card-title"><span class="num-badge">AUDIT</span> History of this cell</div>
+              <button class="btn ghost" style="padding: 4px 8px; font-size: 12px;">Export →</button>
+            </div>
+            <div style="padding: 6px 18px 14px;">
+              <div class="timeline">
+                <div class="tl-item">
+                  <span class="tl-ico active"><svg class="ico-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L20.7 7.3a2 2 0 0 0 0-2.8l-1.2-1.2a2 2 0 0 0-2.8 0L4 16z"/></svg></span>
+                  <div class="body"><b>You</b> changed rule to <span class="pill at-cost" style="font-size: 11px;">At cost</span> | added policy note</div>
+                  <div class="time">now | unsaved</div>
+                </div>
+                <div class="tl-item muted">
+                  <span class="tl-ico"><svg class="ico-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></span>
+                  <div class="body"><b>Maria R.</b> set rule to <span class="pill markup-7" style="font-size: 11px; opacity: 0.7;">Cost +7%</span> (default)</div>
+                  <div class="time">21 Feb</div>
+                </div>
+                <div class="tl-item muted">
+                  <span class="tl-ico"><svg class="ico-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+                  <div class="body"><b>System</b> created this intersection on first matrix load</div>
+                  <div class="time">19 Feb</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: edit form -->
+        <div class="col" style="gap: 18px; align-self: start; position: sticky; top: 110px;" data-reveal>
+
+          <div class="edit-card">
+            <div class="edit-head">
+              <div class="label">Selected intersection</div>
+              <h2>
+                Principal
+                <span class="arrow"><svg class="ico-sm" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
+                CFO
+              </h2>
+            </div>
+
+            <div class="edit-body">
+
+              <div class="field">
+                <label>Row</label>
+                <div class="row-key">
+                  <svg class="ico-xs" style="color: var(--brand);" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>
+                  Principal companies
+                  <span style="color: var(--ink-3); margin-left: auto; font-family: 'Geist Mono', monospace; font-size: 12px;">5 entities | £ 38.2m</span>
+                </div>
+              </div>
+
+              <div class="field">
+                <label>Column</label>
+                <div class="row-key">
+                  <svg class="ico-xs" style="color: var(--brand);" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+                  BU Operations | <span class="mono" style="color: var(--ink-3);">CFO</span>
+                  <span style="color: var(--ink-3); margin-left: auto; font-family: 'Geist Mono', monospace; font-size: 12px;">12 CCs</span>
+                </div>
+              </div>
+
+              <div class="field">
+                <label>Markup rule</label>
+                <div class="rule-grid">
+                  <button class="rule-option">
+                    <span class="pill markup-7"><span class="dot"></span> Cost +7%</span>
+                    <span class="desc">Standard markup for principal entities</span>
+                  </button>
+                  <button class="rule-option">
+                    <span class="pill markup-5"><span class="dot"></span> Cost +5%</span>
+                    <span class="desc">Lower-risk activities | routine</span>
+                  </button>
+                  <button class="rule-option selected">
+                    <span class="pill at-cost"><span class="dot"></span> At cost</span>
+                    <span class="desc">Pass-through | no markup applied</span>
+                  </button>
+                  <button class="rule-option">
+                    <span class="pill exclude"><span class="dot"></span> Exclude</span>
+                    <span class="desc">3rd-party related | drop from base</span>
+                  </button>
+                  <button class="rule-option" style="grid-column: span 2;">
+                    <span class="pill ignore"><span class="dot"></span> Ignore</span>
+                    <span class="desc">Skip this intersection entirely. Use when costs are mapped elsewhere or out of scope.</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="field">
+                <label>Policy note <span style="text-transform: none; color: var(--ink-4); letter-spacing: 0;">| shown on the cell</span></label>
+                <textarea>In these firms CFO costs are 3rd-party related and excluded from markup. See section 4.2 of TP Policy.</textarea>
+              </div>
+
+              <hr class="hr" style="margin: 8px 0 14px;" />
+
+              <div class="field" style="margin-bottom: 0;">
+                <label>Estimated change vs current</label>
+                <div class="row" style="align-items: baseline; gap: 12px; margin-top: 4px;">
+                  <div style="font-family: 'Geist', sans-serif; font-size: 32px; line-height: 1; letter-spacing: -0.03em; color: var(--coral-ink);"><span class="est-sign">−</span> £ <span class="est-num" data-count="2.7" data-count-decimals="1"></span><span style="font-size: 0.5em; color: var(--ink-3);">m</span></div>
+                  <span class="status-pill danger est-status">Reduces uplift to IGL</span>
+                </div>
+                <p class="muted" style="margin: 6px 0 0; font-size: 12px;">vs previous "Cost +7%" rule applied to £ 38.2m of CFO-allocated cost</p>
+              </div>
+
+              <div style="display: flex; gap: 8px; margin-top: 22px;">
+                <button class="btn soft" style="flex: 1; justify-content: center;">Reset to default</button>
+                <button class="btn primary" style="flex: 1; justify-content: center;">
+                  Save &amp; back to matrix
+                  <svg class="ico" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="background: linear-gradient(180deg, var(--lilac-soft), var(--surface)); border-color: oklch(86% 0.08 295);">
+            <div class="row gap-3" style="align-items: flex-start;">
+              <div style="width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; background: var(--surface); border: 1px solid oklch(86% 0.08 295); color: var(--lilac-ink); flex-shrink: 0;">
+                <svg class="ico-sm" viewBox="0 0 24 24"><path d="M12 2l2 6h6l-5 4 2 7-7-4-7 4 2-7-5-4h6z"/></svg>
+              </div>
+              <div>
+                <div style="font-size: 13px; font-weight: 500; color: var(--ink); margin-bottom: 4px;">Apply to similar cells?</div>
+                <p style="margin: 0 0 10px; font-size: 12px; color: var(--ink-2);">Arkk found <b style="color: var(--ink);">2 other intersections</b> with the same row/column shape across regional matrices.</p>
+                <div style="display: flex; gap: 6px;">
+                  <button class="btn soft" style="padding: 4px 10px; font-size: 12px;">Review</button>
+                  <button class="btn" style="padding: 4px 10px; font-size: 12px; background: var(--surface);">Apply to all 3</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- =====================================================================
+     WAVE 2 - page-unique behaviour (Reset to default, Review/Apply to all
+     3, audit-log Export). Additive listeners layered on top of arkk.js's
+     existing initMatrixEdit (rule-option click, Save, Discard) - no shared
+     file touched, no arkk.js edit.
+     ===================================================================== -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  'use strict';
+  if (!window.Arkk) return;
+  var el = Arkk.el;
+
+  var grid = document.querySelector('.rule-grid');
+  var unsavedEl = document.querySelector('.unsaved-indicator');
+
+  /* ---- Reset to default: restores Cost +7% (the rule the audit trail
+     names as default) by re-using arkk.js's own rule-option click handler
+     so bars / est-change / status pill recompute exactly as a real
+     selection would, then settles the unsaved indicator. */
+  var resetBtn = Array.prototype.filter.call(document.querySelectorAll('.btn.soft'), function (b) {
+    return b.textContent.trim() === 'Reset to default';
+  })[0];
+  if (resetBtn && grid) {
+    resetBtn.addEventListener('click', function () {
+      var target = Array.prototype.filter.call(grid.querySelectorAll('.rule-option'), function (o) {
+        return !!o.querySelector('.pill.markup-7');
+      })[0];
+      if (target && !target.classList.contains('selected')) target.click();
+      if (unsavedEl) unsavedEl.hidden = true;
+      Arkk.toast('Reset to default rule.', { sub: 'Cost +7% | standard markup for principal entities' });
+    });
+  }
+
+  /* ---- Review / Apply to all 3: the 3 similar intersections Arkk found
+     across the regional matrices (page-local scope, not a second copy of
+     an ArkkData fact). Apply writes the currently-selected rule to each
+     in arkk.matrix.v1.overrides (real, namespaced, persists past reload -
+     preserves any existing matrix.html "custom" region entries under the
+     same key via get/modify/set rather than a blind overwrite). */
+  var SIMILAR = [
+    { key: 'principal-cfo-na', label: 'Principal × CFO', region: 'North America', rule: 'markup-7' },
+    { key: 'principal-cfo-apac', label: 'Principal × CFO', region: 'Asia-Pacific', rule: 'markup-7' },
+    { key: 'holding-cfo-europe', label: 'Holding × CFO', region: 'Europe', rule: 'ignore' }
+  ];
+  var RULE_LABEL = { 'markup-7': 'Cost +7%', 'markup-5': 'Cost +5%', 'at-cost': 'At cost', exclude: 'Exclude', ignore: 'Ignore' };
+  var similarCard = document.querySelector('.card[style*="lilac-soft"]');
+  var reviewBtn, applyBtn, similarList = null;
+  if (similarCard) {
+    var simBtns = similarCard.querySelectorAll('button.btn');
+    reviewBtn = simBtns[0]; applyBtn = simBtns[1];
+  }
+  function currentRuleKey() {
+    var sel = grid && grid.querySelector('.rule-option.selected .pill');
+    if (!sel) return 'markup-7';
+    var m = sel.className.match(/pill (\S+)/);
+    return m ? m[1] : 'markup-7';
+  }
+  function buildSimilarList() {
+    var wrap = el('div', { style: 'display:flex; flex-direction:column; gap:6px; margin-top:10px; padding-top:10px; border-top:1px solid oklch(86% 0.08 295);' });
+    SIMILAR.forEach(function (item) {
+      var row = el('div', { style: 'display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12px; color:var(--ink-2);' });
+      var left = el('span', { text: item.label + ' | ' + item.region });
+      var pill = el('span', { cls: 'status-pill queued sim-pill', text: RULE_LABEL[item.rule] || item.rule, style: 'font-size:11px;' });
+      row.appendChild(left); row.appendChild(pill);
+      wrap.appendChild(row);
+    });
+    return wrap;
+  }
+  if (reviewBtn) {
+    reviewBtn.addEventListener('click', function () {
+      if (similarList) { similarList.remove(); similarList = null; reviewBtn.textContent = 'Review'; return; }
+      similarList = buildSimilarList();
+      var content = similarCard.querySelector('.row.gap-3 > div:last-child');
+      if (content) content.appendChild(similarList);
+      reviewBtn.textContent = 'Hide';
+    });
+  }
+  if (applyBtn) {
+    applyBtn.addEventListener('click', function () {
+      var ruleKey = currentRuleKey();
+      var store = Arkk.store('arkk.matrix.v1', function () { return { overrides: {} }; });
+      var state = store.get();
+      if (!state.overrides || typeof state.overrides !== 'object') state.overrides = {};
+      SIMILAR.forEach(function (item) { state.overrides[item.key] = ruleKey; item.rule = ruleKey; });
+      store.set(state, true);
+      Arkk.activity.log({ kind: 'matrix', title: 'Applied ' + (RULE_LABEL[ruleKey] || ruleKey) + ' to 3 similar cells', href: 'matrix.html' });
+      Arkk.commit(applyBtn);
+      if (similarList) {
+        Array.prototype.forEach.call(similarList.querySelectorAll('.sim-pill'), function (p) { p.textContent = RULE_LABEL[ruleKey] || ruleKey; });
+      }
+      Arkk.toast('Applied ' + (RULE_LABEL[ruleKey] || ruleKey) + ' to 3 cells.', { sub: 'Principal × CFO (NA, APAC) | Holding × CFO (Europe)' });
+      setTimeout(function () { window.location.href = 'matrix.html'; }, Arkk.reduce ? 0 : 620);
+    });
+  }
+
+  /* ---- Audit log Export: real CSV of this cell's change history. */
+  var auditCard = Array.prototype.filter.call(document.querySelectorAll('.card.flush'), function (c) {
+    return /History of this cell/.test(c.textContent);
+  })[0];
+  if (auditCard) {
+    var exportBtn = auditCard.querySelector('.card-head .btn.ghost');
+    if (exportBtn) {
+      exportBtn.addEventListener('click', function () {
+        var rows = [
+          ['You', 'At cost', 'Added policy note', 'now | unsaved'],
+          ['Maria R.', 'Cost +7%', 'Default', '21 Feb'],
+          ['System', '-', 'Created this intersection on first matrix load', '19 Feb']
+        ];
+        Arkk.exportCSV('northgate-principal-cfo-rule-history.csv', ['Actor', 'Rule', 'Note', 'When'], rows);
+      });
+    }
+  }
+});
+</script>
+</body>
+</html>

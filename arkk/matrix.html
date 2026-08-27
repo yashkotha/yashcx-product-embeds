@@ -1,0 +1,1014 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<script>try{if(localStorage.getItem('arkk.nav.collapsed')==='1')document.documentElement.dataset.navCollapsed='1';}catch(e){}</script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cost matrix | Arkk Transfer Pricing</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  /* Chrome reconciliation: left sidebar is the ONE navigation; the topbar
+     segmented tab strip duplicated it and is removed. Collapse the topbar
+     grid from 3 tracks (nav | search | actions) to 2 (search | actions)
+     without touching shared.css (LAW, never edited). */
+  .topbar { grid-template-columns: 1fr auto !important; }
+</style>
+<link rel="stylesheet" href="arkk-nav.css" />
+<script defer src="arkk-data.js"></script>
+<script defer src="arkk.js"></script>
+<script defer src="arkk-nav.js"></script>
+<script defer src="arkk-chrome.js"></script>
+<style>
+  /* Page-local */
+  .strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+  .matrix-tabs {
+    display: flex; align-items: center; gap: 4px;
+    padding: 6px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    margin-bottom: 14px;
+  }
+  .matrix-tabs a {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 14px;
+    font-size: 13px; color: var(--ink-3);
+    border-radius: 8px;
+    border: 1px solid transparent;
+  }
+  .matrix-tabs a:hover { background: var(--bg-2); color: var(--ink); }
+  .matrix-tabs a.on {
+    background: var(--bg-2); color: var(--ink); font-weight: 500;
+    border-color: var(--line);
+  }
+  .matrix-tabs a .ct { font-family: "Geist Mono", monospace; font-size: 11px; color: var(--ink-4); background: var(--bg-3); padding: 1px 6px; border-radius: 5px; border: 1px solid var(--line); }
+  .matrix-tabs a.on .ct { color: var(--brand); background: var(--brand-soft); border-color: var(--brand-line); }
+  .matrix-tabs .right { margin-left: auto; }
+
+  .impact {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 16px;
+  }
+  .impact .donut-wrap { display: grid; grid-template-columns: 96px 1fr; gap: 16px; align-items: center; }
+  .impact .donut-meta { font-size: 12px; color: var(--ink-3); }
+  .impact .donut-meta b { color: var(--ink); font-weight: 500; font-size: 13px; display: block; margin-bottom: 4px; }
+  .impact-list { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+  .impact-row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 12px; }
+  .impact-row .pill { width: fit-content; }
+  .impact-row .num { font-family: "Geist Mono", monospace; font-size: 13px; color: var(--ink); }
+
+  /* Interaction-layer additions (v6) */
+  td.cell { transition: transform 120ms var(--ease-house); }
+  .chip .x { transition: color var(--dur-micro) var(--ease-house); }
+  .chip .x:hover { color: var(--coral-ink); }
+
+  /* Group 1 fix - entity column sizing: guarantee the group/sub columns
+     never get squeezed to char-by-char wrapping regardless of region
+     (long entity-group names like "Northgate DOOEL Skopje group" need
+     room). shared.css untouched - page-local override only. */
+  table.matrix td.row-group, table.matrix td.row-sub {
+    min-width: 150px;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+  table.matrix td.row-sub { min-width: 170px; }
+
+  /* Group 1 fix - flagged-cell corner marker: shared.css draws a solid
+     orange DOT (::after) on recently-edited/noted cells, which violates
+     the no-naked-dots shape law. Override with a muted text label; the
+     cell background tint (also from shared.css) remains the primary
+     signal, so this is additive context, not decoration. */
+  table.matrix td.cell.flagged::after {
+    content: "edited";
+    top: 4px; right: 6px;
+    width: auto; height: auto;
+    border-radius: 3px;
+    background: none;
+    box-shadow: none;
+    font-family: "Geist Mono", monospace;
+    font-size: 8px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--peach-ink);
+  }
+
+  /* Group 1 fix - alt-drag copy visual feedback (⌥-drag to copy, per the
+     grid's own hint line). Source cell gets a dashed outline; live-hovered
+     targets get a soft tint while the drag is in progress. */
+  table.matrix td.cell.copy-source { outline: 2px dashed var(--brand); outline-offset: -2px; }
+  table.matrix td.cell.copy-target { background: var(--brand-tint); }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Primary (dashboard) navigation -->
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <div class="logo">fs</div>
+      <button class="ws-switch">
+        Northgate
+        <svg class="ico-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l5 5 5-5"/></svg>
+      </button>
+    </div>
+    <div class="sidebar-section">
+      <a class="nav-item" href="./">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 9.5V21h5v-7h4v7h5V9.5"/></svg>
+        <span class="nav-label">Dashboard</span>
+      </a>
+      <a class="nav-item" href="#" data-focus-search>
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <span class="nav-label">Search</span>
+        <span class="count">⌘K</span>
+      </a>
+      <a class="nav-item" href="#" data-quiet="Inbox">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l3-9h12l3 9v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1zM3 13h6l1 3h4l1-3h6"/></svg>
+        <span class="nav-label">Inbox</span>
+        <span class="count">3</span>
+      </a>
+    </div>
+    <div class="sidebar-section">
+      <div class="heading">Workspace</div>
+      <a class="nav-item" href="./">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 9.5V21h5v-7h4v7h5V9.5"/></svg>
+        <span class="nav-label">Overview</span>
+      </a>
+      <a class="nav-item active" href="matrix.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h6v6H4zM14 6h6v6h-6zM4 16h6v4H4zM14 16h6v4h-6z"/></svg>
+        <span class="nav-label">Cost matrix</span>
+      </a>
+      <a class="nav-item" href="transfer-pricing.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h14M14 5l3 3-3 3M21 16H7M10 19l-3-3 3-3"/></svg>
+        <span class="nav-label">Benchmarking</span>
+      </a>
+      <a class="nav-item" href="hierarchy.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="6" rx="1.3"/><rect x="3" y="15" width="6" height="6" rx="1.3"/><rect x="15" y="15" width="6" height="6" rx="1.3"/><path d="M12 9v3M6 15v-3h12v3"/></svg>
+        <span class="nav-label">Hierarchy</span>
+      </a>
+      <a class="nav-item" href="runs.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M10.2 8.7l5.4 3.3-5.4 3.3z"/></svg>
+        <span class="nav-label">Runs</span>
+      </a>
+      <a class="nav-item" href="workflows.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h6m0 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM5 17h6m0 0a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM5 7v10"/></svg>
+        <span class="nav-label">Workflows</span>
+      </a>
+    </div>
+    <div class="sidebar-section">
+      <div class="heading">Data &amp; admin</div>
+      <a class="nav-item" href="data-sources.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>
+        <span class="nav-label">Data sources</span>
+      </a>
+      <a class="nav-item" href="reports.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>
+        <span class="nav-label">Reports</span>
+      </a>
+      <a class="nav-item" href="#" data-quiet="Settings">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .4 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.4 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .4-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.4-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.4H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.4l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.4 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        <span class="nav-label">Settings</span>
+      </a>
+    </div>
+    <div class="sidebar-foot">
+      <div class="user-chip">TH</div>
+      <div>
+        <div class="nm">Tom Heffes</div>
+        <div class="rl">Tax Lead | Northgate</div>
+      </div>
+      <a class="more" href="#" data-quiet="Account menu" title="Account menu">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Icon rail (legacy, hidden) -->
+  <aside class="rail" aria-label="Workspace">
+    <div class="logo">fs</div>
+    <nav class="nav">
+      <a href="./" class="item" title="Overview"><svg class="ico" viewBox="0 0 24 24"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg></a>
+      <a href="matrix.html" class="item active" title="Cost matrix"><svg class="ico" viewBox="0 0 24 24"><path d="M4 6h6v6H4zM14 6h6v6h-6zM4 16h6v4H4zM14 16h6v4h-6z"/></svg></a>
+      <a href="hierarchy.html" class="item" title="Hierarchy"><svg class="ico" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="6" rx="1.3"/><rect x="3" y="15" width="6" height="6" rx="1.3"/><rect x="15" y="15" width="6" height="6" rx="1.3"/><path d="M12 9v3M6 15v-3h12v3"/></svg></a>
+      <a href="runs.html" class="item" title="Runs"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M10.2 8.7l5.4 3.3-5.4 3.3z"/></svg></a>
+      <a href="workflows.html" class="item" title="Workflows"><svg class="ico" viewBox="0 0 24 24"><path d="M5 7h6m0 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM5 17h6m0 0a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM5 7v10"/></svg></a>
+    </nav>
+    <div class="spacer"></div>
+    <a href="#" class="item" style="width: 40px; height: 40px;" title="Help" data-quiet="Help"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.4v.3M12 17h.01"/></svg></a>
+    <a href="#" class="item" style="width: 40px; height: 40px;" title="Settings" data-quiet="Settings"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .4 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.4 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .4-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.4-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.4H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.4l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.4 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></a>
+    <div class="me" title="Tom Heffes">TH</div>
+  </aside>
+
+  <main class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="brand-block">
+        <div class="logo">fs</div>
+        <button class="ws-switch">Northgate <svg class="ico-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l5 5 5-5"/></svg></button>
+      </div>
+      <div class="search">
+        <svg class="ico-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input placeholder="Find row, column, value or rule…" />
+        <span class="kbd">/</span>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn" title="History"><svg class="ico" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5M12 7v6l4 2"/></svg></button>
+        <button class="icon-btn" title="Notifications"><svg class="ico" viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9zM10 21a2 2 0 0 0 4 0"/></svg></button>
+        <div class="user-chip" title="Tom Heffes">TH</div>
+      </div>
+    </div>
+
+    <div class="page">
+
+      <nav class="crumbs">
+        <a href="./">Transfer Pricing</a>
+        <span class="sep">/</span>
+        <a href="./">Q4 2024</a>
+        <span class="sep">/</span>
+        <span class="here">Cost grouping</span>
+      </nav>
+
+      <!-- Header -->
+      <div class="page-head" data-reveal>
+        <div>
+          <div class="page-eyebrow">
+            <span class="status-pill in-progress">In progress</span>
+            <span>assigned to <b style="color: var(--ink);">John Doe</b> | auto-saved 12:42</span>
+          </div>
+          <h1 class="page-title">Cost grouping <em>matrix</em></h1>
+          <p class="page-sub">Define the markup rule for every <b style="color: var(--ink);">entity-group × cost-centre-group</b> intersection in this period. Click a cell to set or change its rule.</p>
+        </div>
+        <div class="page-meta">
+          <a href="reports.html#rc-tp-policy" class="btn ghost">TP policy ↗</a>
+          <a href="#" class="btn ghost" data-quiet="Change report">Change report</a>
+          <button class="btn"><svg class="ico" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg> Export</button>
+          <button class="btn"><svg class="ico" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg> Quality check</button>
+          <a class="btn primary" href="runs.html"><svg class="ico" viewBox="0 0 24 24"><path d="M5 4l14 8-14 8z"/></svg> Calculate run</a>
+        </div>
+      </div>
+
+      <!-- Strip stats -->
+      <div class="strip" data-reveal>
+        <div class="score-card">
+          <div class="label">Cells set</div>
+          <div class="v" data-count="23"><span class="unit">/ 25</span><span class="delta"><svg class="ico-xs" viewBox="0 0 24 24"><path d="M7 14l5-5 5 5" transform="rotate(180 12 12)"/></svg> +4 today</span></div>
+          <div class="sub">2 intersections still need a rule</div>
+        </div>
+        <div class="score-card">
+          <div class="label">Markups in use</div>
+          <div class="v" data-count="5"></div>
+          <div class="sub">+7%, +5%, at cost, exclude, ignore</div>
+        </div>
+        <div class="score-card">
+          <div class="label">Entities affected</div>
+          <div class="v" data-count="186"></div>
+          <div class="sub">covering 100% of TB by gross cost</div>
+        </div>
+        <div class="score-card" style="border-color: var(--peach-line); background: linear-gradient(180deg, var(--peach-soft), var(--surface));">
+          <div class="label" style="color: var(--peach-ink);"><svg class="ico-xs" viewBox="0 0 24 24"><path d="M12 8v4M12 16h.01M10.3 4l-7.6 13c-.8 1.5.3 3 2 3h15.4c1.7 0 2.8-1.5 2-3L13.7 4a2 2 0 0 0-3.4 0z"/></svg> Cells with notes</div>
+          <div class="v" style="color: var(--peach-ink);" data-count="4"></div>
+          <div class="sub" style="color: var(--peach-ink);">Policy clarifications | <a href="exceptions.html" style="color: var(--peach-ink); text-decoration: underline;">review</a></div>
+        </div>
+      </div>
+
+      <!-- Matrix sub-tabs (switch between regional matrices) -->
+      <div class="matrix-tabs" data-reveal>
+        <a href="#" class="on" data-noop>Cost grouping <span class="ct">25</span></a>
+        <a href="#" data-quiet="European allocations matrix">European allocations <span class="ct">18</span></a>
+        <a href="#" data-quiet="North America matrix">North America <span class="ct">12</span></a>
+        <a href="#" data-quiet="Asia-Pacific matrix">Asia-Pacific <span class="ct">12</span></a>
+        <a href="#" class="right" data-quiet="New matrix" style="color: var(--brand);"><svg class="ico-xs" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> New matrix</a>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="toolbar" data-reveal>
+        <span class="chip"><svg class="ico-xs" viewBox="0 0 24 24"><path d="M3 5h18M6 12h12M10 19h4"/></svg> Filters <strong>2</strong></span>
+        <span class="chip">P&amp;L | <strong>rechargeable</strong> <span class="x" style="color: var(--ink-4); display: inline-flex;"><svg class="ico-xs" viewBox="0 0 24 24"><path d="M6 6l12 12M6 18L18 6"/></svg></span></span>
+        <span class="chip">TP transaction | <strong>all</strong> <span class="x" style="color: var(--ink-4); display: inline-flex;"><svg class="ico-xs" viewBox="0 0 24 24"><path d="M6 6l12 12M6 18L18 6"/></svg></span></span>
+        <span class="chip add"><svg class="ico-xs" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Add filter</span>
+        <div class="seg">
+          <button class="on"><svg class="ico-xs" viewBox="0 0 24 24"><path d="M4 6h6v6H4zM14 6h6v6h-6zM4 16h6v4H4zM14 16h6v4h-6z"/></svg> Matrix</button>
+          <button><svg class="ico-xs" viewBox="0 0 24 24"><path d="M3 5h18M3 12h18M3 19h18"/></svg> Table</button>
+          <button><svg class="ico-xs" viewBox="0 0 24 24"><path d="M5 5h14v6H5zM5 13h6v6H5zM13 13h6v6h-6z"/></svg> Compare</button>
+        </div>
+      </div>
+
+      <!-- Matrix -->
+      <div class="matrix-wrap" data-reveal>
+        <div class="matrix-meta">
+          <div class="row gap-3">
+            <span class="status-pill in-progress" style="font-size: 11px;"><span class="dot"></span> 23 of 25 rules set</span>
+            <span class="muted" style="font-size: 12px;">Click any cell to edit | ⌥-drag to copy | ⌘Z to undo</span>
+          </div>
+          <div class="legend">
+            <span class="lg"><span class="sw markup-7"></span> Cost +7%</span>
+            <span class="lg"><span class="sw markup-5"></span> Cost +5%</span>
+            <span class="lg"><span class="sw at-cost"></span> At cost</span>
+            <span class="lg"><span class="sw exclude"></span> Exclude</span>
+            <span class="lg"><span class="sw ignore"></span> Ignore</span>
+          </div>
+        </div>
+
+        <table class="matrix" role="grid">
+          <thead>
+            <tr>
+              <th style="background: var(--bg-2); width: 200px;"></th>
+              <th style="background: var(--bg-2); width: 220px;"></th>
+              <th class="col-group">Sales &amp; Marketing</th>
+              <th class="col-group">BU Operations</th>
+              <th class="col-group">Central Services</th>
+            </tr>
+            <tr>
+              <th style="color: var(--ink-3); font-weight: 400; text-transform: none; letter-spacing: 0; font-size: 12px;">Entity group</th>
+              <th style="color: var(--ink-3); font-weight: 400; text-transform: none; letter-spacing: 0; font-size: 12px;">Entity</th>
+              <th class="col-sub">all CC groups</th>
+              <th class="col-sub">CFO</th>
+              <th class="col-sub">all CC groups</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="row-group" rowspan="2">
+                <div class="row gap-2">
+                  <span class="ent-av" style="width: 22px; height: 22px; border-radius: 6px; background: linear-gradient(135deg, oklch(86% 0.04 254), oklch(74% 0.05 254)); color: var(--brand-2); display: grid; place-items: center; font-size: 10px; font-weight: 600; font-family: 'Geist Mono', monospace;">P</span>
+                  Principal companies
+                </div>
+              </td>
+              <td class="row-sub">(all)</td>
+              <td class="cell"><span class="pill markup-7"><span class="dot"></span> Cost +7%</span></td>
+              <td class="cell"><span class="pill markup-7"><span class="dot"></span> Cost +7%</span></td>
+              <td class="cell"><span class="pill markup-5"><span class="dot"></span> Cost +5%</span></td>
+            </tr>
+            <tr>
+              <td class="row-sub" style="color: var(--ink-2);">
+                <div class="col gap-2" style="gap: 3px;">
+                  <span class="mono" style="font-size: 12px;">CONNECT FINCO (LUX)</span>
+                  <span class="mono" style="font-size: 12px;">Northgate DOOEL Skopje</span>
+                  <span class="mono" style="font-size: 12px;">Northgate Solutions doo</span>
+                  <a href="#" data-quiet="More entities" style="color: var(--brand); font-size: 11px; margin-top: 2px;">+2 more entities</a>
+                </div>
+              </td>
+              <td class="cell"><span class="pill markup-7"><span class="dot"></span> Cost +7%</span></td>
+              <td class="cell flagged" title="CFO costs are 3P-related and excluded from markup">
+                <span class="pill at-cost"><span class="dot"></span> At cost</span>
+              </td>
+              <td class="cell"><span class="pill markup-5"><span class="dot"></span> Cost +5%</span></td>
+            </tr>
+            <tr>
+              <td class="row-group">
+                <div class="row gap-2">
+                  <span class="ent-av" style="width: 22px; height: 22px; border-radius: 6px; background: linear-gradient(135deg, oklch(90% 0.05 162), oklch(75% 0.08 162)); color: var(--mint-ink); display: grid; place-items: center; font-size: 10px; font-weight: 600; font-family: 'Geist Mono', monospace;">R</span>
+                  Routine
+                  <span class="muted" style="font-size: 12px;">trading entities</span>
+                </div>
+              </td>
+              <td class="row-sub">(all | 38 entities)</td>
+              <td class="cell"><span class="pill markup-7"><span class="dot"></span> Cost +7%</span></td>
+              <td class="cell"><span class="pill markup-5"><span class="dot"></span> Cost +5%</span></td>
+              <td class="cell"><span class="pill at-cost"><span class="dot"></span> At cost</span></td>
+            </tr>
+            <tr>
+              <td class="row-group">
+                <div class="row gap-2">
+                  <span class="ent-av" style="width: 22px; height: 22px; border-radius: 6px; background: linear-gradient(135deg, oklch(90% 0.05 60), oklch(78% 0.10 60)); color: var(--peach-ink); display: grid; place-items: center; font-size: 10px; font-weight: 600; font-family: 'Geist Mono', monospace;">H</span>
+                  Holding &amp; other
+                </div>
+              </td>
+              <td class="row-sub">(all | 12 entities)</td>
+              <td class="cell"><span class="pill ignore"><span class="dot"></span> Ignore</span></td>
+              <td class="cell"><span class="pill exclude"><span class="dot"></span> Exclude</span></td>
+              <td class="cell"><span class="pill exclude"><span class="dot"></span> Exclude</span></td>
+            </tr>
+            <tr>
+              <td class="row-group">
+                <div class="row gap-2">
+                  <span class="ent-av" style="width: 22px; height: 22px; border-radius: 6px; background: linear-gradient(135deg, oklch(90% 0.04 295), oklch(78% 0.08 295)); color: var(--lilac-ink); display: grid; place-items: center; font-size: 10px; font-weight: 600; font-family: 'Geist Mono', monospace;">L</span>
+                  Legacy solutions
+                </div>
+              </td>
+              <td class="row-sub">(all | 8 entities)</td>
+              <td class="cell"><span class="pill markup-7"><span class="dot"></span> Cost +7%</span></td>
+              <td class="cell"><span class="pill markup-5"><span class="dot"></span> Cost +5%</span></td>
+              <td class="cell flagged" title="Legacy entities run at cost under the 2023 transition agreement"><span class="pill at-cost"><span class="dot"></span> At cost</span></td>
+            </tr>
+            <tr>
+              <td class="row-group" style="color: var(--ink-3);">
+                <div class="row gap-2">
+                  <span class="ent-av" style="width: 22px; height: 22px; border-radius: 6px; background: var(--bg-2); border: 1px solid var(--line); color: var(--ink-3); display: grid; place-items: center; font-size: 10px; font-weight: 600; font-family: 'Geist Mono', monospace;">*</span>
+                  Default <span class="count" style="margin-left: 4px;">fallback</span>
+                </div>
+              </td>
+              <td class="row-sub">(other)</td>
+              <td class="cell"><span class="pill ignore"><span class="dot"></span> Ignore</span></td>
+              <td class="cell"><span class="pill ignore"><span class="dot"></span> Ignore</span></td>
+              <td class="cell"><span class="pill ignore"><span class="dot"></span> Ignore</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Bottom: rule usage + impact preview -->
+      <div class="impact" data-reveal>
+        <div class="card flush">
+          <div class="card-head">
+            <div class="card-title">Rules used across cells</div>
+            <button class="btn ghost" style="padding: 4px 10px; font-size: 12px;">Manage rules</button>
+          </div>
+          <div style="padding: 18px 20px;">
+            <div style="display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px;">
+              <div style="font-family: 'Geist', sans-serif; font-size: 28px; line-height: 1; letter-spacing: -0.03em; font-weight: 500; color: var(--ink);">23<span style="font-size: 14px; color: var(--ink-3); margin-left: 6px; font-weight: 400;">of 25 cells</span></div>
+              <span style="font-size: 12px; color: var(--brand-2); margin-left: auto;">2 still need a rule →</span>
+            </div>
+
+            <div class="rule-list" style="margin-top: 14px;">
+              <div class="rule-row">
+                <span class="pill markup-7">Cost +7%</span>
+                <div class="rule-bar"><div class="rule-fill" data-to="35%" style="width: 0%; background: oklch(72% 0.13 254);"></div></div>
+                <span class="rule-meta"><b>8</b> cells</span>
+                <span class="rule-pct">35%</span>
+              </div>
+              <div class="rule-row">
+                <span class="pill markup-5">Cost +5%</span>
+                <div class="rule-bar"><div class="rule-fill" data-to="22%" style="width: 0%; background: oklch(78% 0.10 220);"></div></div>
+                <span class="rule-meta"><b>5</b> cells</span>
+                <span class="rule-pct">22%</span>
+              </div>
+              <div class="rule-row">
+                <span class="pill ignore">Ignore</span>
+                <div class="rule-bar"><div class="rule-fill" data-to="22%" style="width: 0%; background: oklch(82% 0.005 254);"></div></div>
+                <span class="rule-meta"><b>5</b> cells</span>
+                <span class="rule-pct">22%</span>
+              </div>
+              <div class="rule-row">
+                <span class="pill at-cost">At cost</span>
+                <div class="rule-bar"><div class="rule-fill" data-to="13%" style="width: 0%; background: oklch(70% 0.015 254);"></div></div>
+                <span class="rule-meta"><b>3</b> cells</span>
+                <span class="rule-pct">13%</span>
+              </div>
+              <div class="rule-row">
+                <span class="pill exclude">Exclude</span>
+                <div class="rule-bar"><div class="rule-fill" data-to="9%" style="width: 0%; background: oklch(70% 0.16 25);"></div></div>
+                <span class="rule-meta"><b>2</b> cells</span>
+                <span class="rule-pct">9%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card flush">
+          <div class="card-head">
+            <div class="card-title">Estimated TP adjustment</div>
+            <a href="runs.html" class="btn ghost" style="padding: 4px 10px; font-size: 12px;">Run dry-calc →</a>
+          </div>
+          <div style="padding: 18px 20px 20px;">
+            <div style="font-size: 11px; color: var(--ink-3); letter-spacing: 0.06em; text-transform: uppercase; font-weight: 500; margin-bottom: 6px;">Estimated uplift to IGL</div>
+            <div style="display: flex; align-items: baseline; gap: 10px;">
+              <div style="font-family: 'Geist', sans-serif; font-size: 40px; letter-spacing: -0.035em; line-height: 1; font-weight: 500; color: var(--ink); font-feature-settings: 'tnum';">£28.9<span style="font-size: 18px; color: var(--ink-3); font-weight: 400; margin-left: 2px;">M</span></div>
+              <span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--mint-ink); background: var(--mint-soft); padding: 2px 7px; border-radius: 4px; border: 1px solid var(--mint-line);">+£2.1M vs Q3</span>
+            </div>
+            <p style="margin: 8px 0 0; font-size: 12px; color: var(--ink-3);">Modeled on Q4 trial balance | not posted until you calculate.</p>
+
+            <div class="impact-table">
+              <div class="label">Cost-plus markups</div>
+              <div class="val pos">+ £32.4M</div>
+              <div class="label">Adjustments at cost</div>
+              <div class="val">£0.0</div>
+              <div class="label">Exclusions <span class="muted">(3P-related)</span></div>
+              <div class="val neg">− £3.5M</div>
+              <div class="label">Ignored cells</div>
+              <div class="val muted">£0.0</div>
+            </div>
+
+            <div style="display: flex; gap: 8px; margin-top: 20px;">
+              <a href="matrix-edit.html" class="btn">Edit a cell</a>
+              <a href="runs.html" class="btn primary" style="flex: 1; justify-content: center;">Continue | Run &amp; post →</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  'use strict';
+  if (!window.Arkk || !window.ArkkData) return;
+  var Arkk = window.Arkk, D = window.ArkkData, el = Arkk.el, icon = Arkk.icon, clear = Arkk.clear;
+
+  /* Icon-first buttons (svg then " Label" text node) - Arkk.setLeadingText
+     assumes text-first markup, so relabel via the trailing text node here. */
+  function setTrailingText(node, text) {
+    var last = node.lastChild;
+    if (last && last.nodeType === 3) last.nodeValue = ' ' + text;
+    else node.appendChild(document.createTextNode(' ' + text));
+  }
+
+  var RULE_LABEL = { 'markup-7': 'Cost +7%', 'markup-5': 'Cost +5%', 'at-cost': 'At cost', exclude: 'Exclude', ignore: 'Ignore' };
+  var RULE_UPLIFT = { 'markup-7': 1.9, 'markup-5': 1.1, 'at-cost': 0, exclude: -0.4, ignore: 0 };
+  var RULE_KEYS = Object.keys(RULE_LABEL);
+  var COLS = ['Sales & Marketing', 'BU Operations', 'Central Services'];
+
+  /* ONE data shape for all four regions. Every region's matrix is a list
+     of entity GROUPS ({key, letter, name, subLabel?, tint, isFallback})
+     each owning 1+ entity ROWS ({sub | entities(+moreEntities), cells,
+     flaggedIdx?, flagNote?}). The single renderGrid() below consumes only
+     this shape. Previously the Cost grouping tab kept a private cloned-
+     markup path while the other three tabs used a bare data path, so the
+     entity-group column looked different per tab: untinted letter tiles,
+     no sub-labels, no fallback chip, duplicated flat group rows instead
+     of one row-spanned cell, and inline "+ 2 more" text instead of the
+     stacked entity list. One shape + one renderer = identical treatment. */
+  var TINTS = {
+    brand:   { bg: 'linear-gradient(135deg, oklch(86% 0.04 254), oklch(74% 0.05 254))', ink: 'var(--brand-2)' },
+    mint:    { bg: 'linear-gradient(135deg, oklch(90% 0.05 162), oklch(75% 0.08 162))', ink: 'var(--mint-ink)' },
+    peach:   { bg: 'linear-gradient(135deg, oklch(90% 0.05 60), oklch(78% 0.10 60))', ink: 'var(--peach-ink)' },
+    lilac:   { bg: 'linear-gradient(135deg, oklch(90% 0.04 295), oklch(78% 0.08 295))', ink: 'var(--lilac-ink)' },
+    neutral: { bg: 'var(--bg-2)', ink: 'var(--ink-3)', border: '1px solid var(--line)' }
+  };
+  var FLAG_NOTE_CFO = 'CFO costs are 3P-related and excluded from markup';
+  var FLAG_NOTE_LEGACY = 'Legacy entities run at cost under the 2023 transition agreement';
+  /* Cost grouping and European allocations render the same underlying rows
+     (as they always have - Europe mirrored the hand-authored table); each
+     region still gets its own group objects so edits never bleed across. */
+  function sharedGroups() {
+    return [
+      { key: 'principal', letter: 'P', name: 'Principal companies', tint: 'brand',
+        rows: [
+          { sub: '(all)', cells: ['markup-7', 'markup-7', 'markup-5'] },
+          { entities: ['CONNECT FINCO (LUX)', 'Northgate DOOEL Skopje', 'Northgate Solutions doo'],
+            moreEntities: ['NORTHGATE DOOEL', 'NEW WAVE BROADBAND'],
+            cells: ['markup-7', 'at-cost', 'markup-5'], flaggedIdx: 1, flagNote: FLAG_NOTE_CFO }
+        ] },
+      { key: 'routine', letter: 'R', name: 'Routine', subLabel: 'trading entities', tint: 'mint',
+        rows: [{ sub: '(all | 38 entities)', cells: ['markup-7', 'markup-5', 'at-cost'] }] },
+      { key: 'holding', letter: 'H', name: 'Holding & other', tint: 'peach',
+        rows: [{ sub: '(all | 12 entities)', cells: ['ignore', 'exclude', 'exclude'] }] },
+      { key: 'legacy', letter: 'L', name: 'Legacy solutions', tint: 'lilac',
+        rows: [{ sub: '(all | 8 entities)', cells: ['markup-7', 'markup-5', 'at-cost'], flaggedIdx: 2, flagNote: FLAG_NOTE_LEGACY }] },
+      { key: 'default', letter: '*', name: 'Default', tint: 'neutral', isFallback: true,
+        rows: [{ sub: '(other)', cells: ['ignore', 'ignore', 'ignore'] }] }
+    ];
+  }
+  var REGION_DATA = {
+    'cost-grouping': { label: 'Cost grouping', count: 25, groups: sharedGroups() },
+    europe: { label: 'European allocations', count: 18, groups: sharedGroups() },
+    'north-america': {
+      label: 'North America', count: 12,
+      groups: [
+        { key: 'skopje-group', letter: 'N', name: 'Northgate DOOEL Skopje group', tint: 'brand',
+          rows: [{ entities: ['NORTHGATE DOOEL SKOPJE', 'NORTHGATE US INC', 'NORTHGATE CANADA LTD'],
+                   moreEntities: ['CONNECT FINCO US', 'NORTHGATE MEXICO SA', 'NORTHGATE NA SERVICES'],
+                   cells: ['markup-7', 'markup-7', 'at-cost'] }] },
+        { key: 'bidco-na', letter: 'C', name: 'Connect Bidco NA', subLabel: 'acquisition entities', tint: 'mint',
+          rows: [{ sub: '(all | 4 entities)', cells: ['markup-5', 'at-cost', 'exclude'] }] },
+        { key: 'legacy-na', letter: 'L', name: 'Legacy NA', tint: 'lilac',
+          rows: [{ sub: '(all | 2 entities)', cells: ['ignore', 'ignore', 'exclude'] }] },
+        { key: 'default', letter: '*', name: 'Default', tint: 'neutral', isFallback: true,
+          rows: [{ sub: '(other)', cells: ['ignore', 'ignore', 'ignore'] }] }
+      ]
+    },
+    'asia-pacific': {
+      label: 'Asia-Pacific', count: 12,
+      groups: [
+        { key: 'new-wave-apac', letter: 'N', name: 'New Wave Broadband APAC', tint: 'brand',
+          rows: [{ entities: ['NEW WAVE BROADBAND PTE', 'NEW WAVE BROADBAND KK', 'NORTHGATE APAC HOLDINGS'],
+                   moreEntities: ['NEW WAVE BROADBAND AU', 'NORTHGATE SOLUTIONS SDN'],
+                   cells: ['markup-7', 'markup-5', 'at-cost'] }] },
+        { key: 'ng-apac', letter: 'N', name: 'Northgate Solutions APAC', subLabel: 'trading entities', tint: 'mint',
+          rows: [{ sub: '(all | 3 entities)', cells: ['markup-7', 'at-cost', 'exclude'] }] },
+        { key: 'legacy-apac', letter: 'L', name: 'Legacy APAC', tint: 'lilac',
+          rows: [{ sub: '(all | 3 entities)', cells: ['ignore', 'exclude', 'ignore'] }] },
+        { key: 'default', letter: '*', name: 'Default', tint: 'neutral', isFallback: true,
+          rows: [{ sub: '(other)', cells: ['ignore', 'ignore', 'ignore'] }] }
+      ]
+    }
+  };
+
+  var matrixTable = document.querySelector('table.matrix');
+  var matrixWrap = document.querySelector('.matrix-wrap');
+  var currentView = 'matrix';
+  var currentRegion = 'cost-grouping';
+
+  /* ---- Alt-drag copy + Cmd/Ctrl-Z undo (the grid's own hint line promises
+     both: "⌥-drag to copy | ⌘Z to undo"). Operates directly on the rendered
+     pill markup so it works identically across every region/view without
+     caring whether the cell came from the static markup or REGION_DATA. */
+  var undoStack = [];
+  var dragState = null;
+  function getCellRule(td) {
+    var pill = td.querySelector('.pill');
+    if (!pill) return null;
+    return RULE_KEYS.filter(function (k) { return pill.classList.contains(k); })[0] || null;
+  }
+  function setCellRule(td, ruleKey) {
+    var pill = td.querySelector('.pill');
+    if (!pill || !ruleKey) return;
+    RULE_KEYS.forEach(function (k) { pill.classList.remove(k); });
+    pill.classList.add(ruleKey);
+    var last = pill.lastChild;
+    if (last && last.nodeType === 3) last.nodeValue = RULE_LABEL[ruleKey];
+    else pill.appendChild(document.createTextNode(RULE_LABEL[ruleKey]));
+  }
+  function endDrag() {
+    if (!dragState) return;
+    document.body.style.cursor = '';
+    Array.prototype.forEach.call(document.querySelectorAll('.copy-source'), function (n) { n.classList.remove('copy-source'); });
+    Array.prototype.forEach.call(document.querySelectorAll('.copy-target'), function (n) { n.classList.remove('copy-target'); });
+    if (dragState.changed.length) {
+      undoStack.push({ changed: dragState.changed.slice() });
+      var label = REGION_DATA[currentRegion].label;
+      var n = dragState.changed.length;
+      Arkk.activity.log({ kind: 'matrix', title: 'Copied ' + RULE_LABEL[dragState.sourceRule] + ' to ' + n + ' cell' + (n > 1 ? 's' : '') + ' | ' + label, href: 'matrix.html' });
+      Arkk.toast('Copied ' + RULE_LABEL[dragState.sourceRule] + ' to ' + n + ' cell' + (n > 1 ? 's' : '') + '.', { sub: '⌘Z to undo' });
+    }
+    dragState = null;
+  }
+  document.addEventListener('mouseup', endDrag);
+  document.addEventListener('keydown', function (e) {
+    var isUndo = (e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'z';
+    if (!isUndo || !undoStack.length || currentView !== 'matrix') return;
+    e.preventDefault();
+    var entry = undoStack.pop();
+    entry.changed.forEach(function (c) { setCellRule(c.td, c.prevRule); });
+    Arkk.toast('Undid copy to ' + entry.changed.length + ' cell' + (entry.changed.length > 1 ? 's' : '') + '.');
+  });
+
+  function wireGridCell(cell) {
+    cell.addEventListener('mousedown', function (e) {
+      if (!e.altKey || currentView !== 'matrix') return;
+      var sourceRule = getCellRule(cell);
+      if (!sourceRule) return;
+      e.preventDefault();
+      cell._altDown = true;
+      dragState = { sourceRule: sourceRule, changed: [] };
+      cell.classList.add('copy-source');
+      document.body.style.cursor = 'copy';
+    });
+    cell.addEventListener('mouseenter', function () {
+      if (!dragState || cell.classList.contains('copy-source')) return;
+      var rule = getCellRule(cell);
+      if (rule === dragState.sourceRule) return;
+      if (!dragState.changed.some(function (c) { return c.td === cell; })) {
+        dragState.changed.push({ td: cell, prevRule: rule });
+      }
+      setCellRule(cell, dragState.sourceRule);
+      cell.classList.add('copy-target');
+    });
+    cell.addEventListener('click', function () {
+      if (cell._altDown) { cell._altDown = false; return; }
+      if (Arkk.reduce) { window.location.href = 'matrix-edit.html'; return; }
+      cell.style.transition = 'transform 120ms var(--ease-house)';
+      cell.style.transform = 'scale(0.99)';
+      setTimeout(function () {
+        cell.style.transform = 'scale(1)';
+        setTimeout(function () { window.location.href = 'matrix-edit.html'; }, 90);
+      }, 120);
+    });
+  }
+
+  function pillHtml(rule) {
+    var span = el('span', { cls: 'pill ' + rule });
+    span.appendChild(el('span', { cls: 'dot' }));
+    span.appendChild(document.createTextNode(RULE_LABEL[rule]));
+    return span;
+  }
+
+  /* ---- The ONE grid renderer. Every region - including Cost grouping -
+     renders through this path from REGION_DATA, so the entity-group column
+     treatment (tinted letter tile, group name + optional sub-label,
+     fallback chip on Default, row-spanned group cell over its entity rows,
+     stacked entity list with a working "+N more entities" expander) is
+     identical on every tab. Header and body are re-rendered together on
+     the ONE table.matrix grid - never two competing DOM trees. */
+  function entTile(group) {
+    var t = TINTS[group.tint] || TINTS.neutral;
+    var style = 'flex: 0 0 auto; width: 22px; height: 22px; border-radius: 6px; background: ' + t.bg + '; color: ' + t.ink +
+      '; display: grid; place-items: center; font-size: 10px; font-weight: 600; font-family: \'Geist Mono\', monospace;';
+    if (t.border) style += ' border: ' + t.border + ';';
+    return el('span', { cls: 'ent-av', text: group.letter, style: style });
+  }
+  function groupCell(group) {
+    var td = el('td', { cls: 'row-group' });
+    if (group.rows.length > 1) td.rowSpan = group.rows.length;
+    if (group.isFallback) td.style.color = 'var(--ink-3)';
+    var row = el('div', { cls: 'row gap-2' });
+    row.appendChild(entTile(group));
+    row.appendChild(document.createTextNode(group.name));
+    if (group.subLabel) row.appendChild(el('span', { cls: 'muted', text: group.subLabel, style: 'font-size: 12px;' }));
+    if (group.isFallback) row.appendChild(el('span', { cls: 'count', text: 'fallback', style: 'margin-left: 4px;' }));
+    td.appendChild(row);
+    return td;
+  }
+  function subCell(r) {
+    if (!r.entities) return el('td', { cls: 'row-sub', text: r.sub });
+    var td = el('td', { cls: 'row-sub', style: 'color: var(--ink-2);' });
+    var list = el('div', { cls: 'col gap-2', style: 'gap: 3px;' });
+    r.entities.forEach(function (name) {
+      list.appendChild(el('span', { cls: 'mono', text: name, style: 'font-size: 12px;' }));
+    });
+    var moreNames = r.moreEntities || [];
+    if (moreNames.length) {
+      var link = el('a', { cls: 'arkk-more-entities', text: '+' + moreNames.length + ' more entities', style: 'color: var(--brand); font-size: 11px; margin-top: 2px;' });
+      link.href = '#';
+      link.addEventListener('click', function (e) {
+        e.preventDefault();
+        moreNames.forEach(function (name) {
+          list.insertBefore(el('span', { cls: 'mono', text: name, style: 'font-size: 12px;' }), link);
+        });
+        link.remove();
+      });
+      list.appendChild(link);
+    }
+    td.appendChild(list);
+    return td;
+  }
+  function renderGrid(regionKey) {
+    var tbody = matrixTable.querySelector('tbody');
+    clear(tbody);
+    var head = matrixTable.querySelector('thead tr:first-child');
+    if (head) {
+      var groups = head.querySelectorAll('.col-group');
+      groups.forEach(function (g, i) { g.textContent = COLS[i]; });
+    }
+    REGION_DATA[regionKey].groups.forEach(function (group) {
+      group.rows.forEach(function (r, ri) {
+        var tr = el('tr');
+        if (ri === 0) tr.appendChild(groupCell(group));
+        tr.appendChild(subCell(r));
+        r.cells.forEach(function (rule, i) {
+          var isFlagged = r.flaggedIdx === i;
+          var td = el('td', { cls: 'cell' + (isFlagged ? ' flagged' : ''), attrs: isFlagged ? { title: r.flagNote || 'Recently edited | policy note attached' } : {} });
+          td.appendChild(pillHtml(rule));
+          tr.appendChild(td);
+          wireGridCell(td);
+        });
+        tbody.appendChild(tr);
+      });
+    });
+  }
+
+  function flatRows(regionKey) {
+    var out = [];
+    REGION_DATA[regionKey].groups.forEach(function (group) {
+      group.rows.forEach(function (r) {
+        var sub = r.sub;
+        if (!sub && r.entities) {
+          var hidden = r.entities.length - 1 + (r.moreEntities || []).length;
+          sub = r.entities[0] + (hidden > 0 ? ' + ' + hidden + ' more' : '');
+        }
+        r.cells.forEach(function (rule, i) {
+          out.push({ rollup: COLS[i], group: group.name, sub: sub || '', rule: rule });
+        });
+      });
+    });
+    return out;
+  }
+
+  function renderTable(regionKey) {
+    matrixWrap.style.display = 'none';
+    var host = document.getElementById('arkk-matrix-alt-view');
+    clear(host);
+    host.style.display = '';
+    var table = el('table', { cls: 'matrix', style: 'width:100%;' });
+    var thead = el('thead');
+    var htr = el('tr');
+    ['Entity group', 'Rollup', 'Rule', 'Est. uplift'].forEach(function (h) { htr.appendChild(el('th', { text: h })); });
+    thead.appendChild(htr);
+    table.appendChild(thead);
+    var tbody = el('tbody');
+    var rows = flatRows(regionKey);
+    rows.forEach(function (r) {
+      var tr = el('tr');
+      tr.appendChild(el('td', { text: r.group + ' ' + r.sub }));
+      tr.appendChild(el('td', { text: r.rollup }));
+      var ruleTd = el('td'); ruleTd.appendChild(pillHtml(r.rule)); tr.appendChild(ruleTd);
+      tr.appendChild(el('td', { cls: 'num', text: (RULE_UPLIFT[r.rule] >= 0 ? '+' : '') + '£' + RULE_UPLIFT[r.rule].toFixed(1) + 'm' }));
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    host.appendChild(table);
+    var sortState = {};
+    thead.querySelectorAll('th').forEach(function (th, colIdx) {
+      th.style.cursor = 'pointer';
+      th.addEventListener('click', function () {
+        var asc = !sortState[colIdx];
+        sortState = {}; sortState[colIdx] = asc;
+        var trs = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+        trs.sort(function (a, b) {
+          var av = a.children[colIdx].textContent.trim(), bv = b.children[colIdx].textContent.trim();
+          return asc ? av.localeCompare(bv, undefined, { numeric: true }) : bv.localeCompare(av, undefined, { numeric: true });
+        });
+        trs.forEach(function (tr) { tbody.appendChild(tr); });
+      });
+    });
+  }
+
+  function renderCompare(regionKey) {
+    matrixWrap.style.display = 'none';
+    var host = document.getElementById('arkk-matrix-alt-view');
+    clear(host);
+    host.style.display = '';
+    var note = el('div', { style: 'font-size:12.5px; color:var(--ink-3); margin-bottom:10px;' });
+    note.textContent = 'Q4 2024 vs Q3 2024, by intersection. Fill tint shows the direction of change.';
+    host.appendChild(note);
+    var table = el('table', { cls: 'matrix', style: 'width:100%;' });
+    var thead = el('thead');
+    var htr = el('tr');
+    ['Entity group', 'Rollup', 'Q4 rule', 'Delta vs Q3'].forEach(function (h) { htr.appendChild(el('th', { text: h })); });
+    thead.appendChild(htr);
+    table.appendChild(thead);
+    var tbody = el('tbody');
+    flatRows(regionKey).forEach(function (r, i) {
+      var tr = el('tr');
+      tr.appendChild(el('td', { text: r.group + ' ' + r.sub }));
+      tr.appendChild(el('td', { text: r.rollup }));
+      var ruleTd = el('td'); ruleTd.appendChild(pillHtml(r.rule)); tr.appendChild(ruleTd);
+      var delta = Math.round(((i * 37) % 9) - 4) * 0.1;
+      var deltaTd = el('td', { cls: 'num', text: (delta >= 0 ? '+' : '') + '£' + Math.abs(delta).toFixed(1) + 'm' });
+      deltaTd.style.background = delta > 0 ? 'var(--mint-soft)' : (delta < 0 ? 'var(--coral-soft)' : 'transparent');
+      deltaTd.style.color = delta > 0 ? 'var(--mint-ink)' : (delta < 0 ? 'var(--coral-ink)' : 'var(--ink-3)');
+      tr.appendChild(deltaTd);
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    host.appendChild(table);
+  }
+
+  function render() {
+    var host = document.getElementById('arkk-matrix-alt-view');
+    if (currentView === 'matrix') {
+      host.style.display = 'none';
+      matrixWrap.style.display = '';
+      renderGrid(currentRegion);
+    } else if (currentView === 'table') {
+      renderTable(currentRegion);
+    } else {
+      renderCompare(currentRegion);
+    }
+    document.querySelectorAll('.matrix-tabs a[data-region]').forEach(function (a) { a.classList.remove('on'); });
+    var tab = document.querySelector('.matrix-tabs a[data-region="' + currentRegion + '"]');
+    if (tab) tab.classList.add('on');
+  }
+
+  /* Host node for Table/Compare views, right after the authored matrix-wrap */
+  var altHost = el('div', { style: 'display:none;' });
+  altHost.id = 'arkk-matrix-alt-view';
+  matrixWrap.insertAdjacentElement('afterend', altHost);
+
+  /* ---- View seg: Matrix / Table / Compare ---- */
+  var viewSeg = document.querySelector('.toolbar .seg');
+  if (viewSeg) {
+    var viewBtns = viewSeg.querySelectorAll('button');
+    var VIEW_KEYS = ['matrix', 'table', 'compare'];
+    viewBtns.forEach(function (btn, i) {
+      btn.addEventListener('click', function () {
+        viewBtns.forEach(function (b) { b.classList.remove('on'); });
+        btn.classList.add('on');
+        currentView = VIEW_KEYS[i];
+        render();
+      });
+    });
+  }
+
+  /* ---- Region switchers: Cost grouping / European / North America /
+     Asia-Pacific / New matrix. "Cost grouping" previously shared the
+     'europe' region key with "European allocations" - two different tabs
+     racing for one key meant the wrong one won document.querySelector's
+     first-match and its data never loaded. Every tab now gets its own key. */
+  var cogTab = document.querySelector('.matrix-tabs a[data-noop]');
+  if (cogTab) cogTab.removeAttribute('data-noop');
+  var euTab = document.querySelector('a[data-quiet="European allocations matrix"]');
+  var naTab = document.querySelector('a[data-quiet="North America matrix"]');
+  var apacTab = document.querySelector('a[data-quiet="Asia-Pacific matrix"]');
+  var newTab = document.querySelector('a[data-quiet="New matrix"]');
+
+  function wireRegionTab(a, regionKey) {
+    if (!a) return;
+    a.removeAttribute('data-quiet');
+    a.dataset.region = regionKey;
+    a.addEventListener('click', function (e) {
+      e.preventDefault();
+      currentRegion = regionKey;
+      render();
+    });
+  }
+  wireRegionTab(cogTab, 'cost-grouping');
+  wireRegionTab(euTab, 'europe');
+  wireRegionTab(naTab, 'north-america');
+  wireRegionTab(apacTab, 'asia-pacific');
+
+  var CUSTOM_REGIONS = Arkk.store('arkk.matrix.v1', function () { return { custom: [] }; });
+  if (newTab) {
+    newTab.removeAttribute('data-quiet');
+    newTab.addEventListener('click', function (e) {
+      e.preventDefault();
+      if (document.querySelector('.arkk-new-matrix-form')) return;
+      var form = el('div', { cls: 'arkk-new-matrix-form', style: 'display:flex; align-items:center; gap:8px; padding:10px 12px; margin:10px 0; background:var(--bg-2); border-radius:10px;' });
+      var nameInput = document.createElement('input');
+      nameInput.type = 'text'; nameInput.placeholder = 'Matrix name';
+      nameInput.style.cssText = 'flex:1; padding:7px 9px; font-size:12.5px; border:1px solid var(--line); border-radius:8px; font-family:inherit;';
+      var create = el('button', { cls: 'btn primary', text: 'Create', type: 'button', style: 'padding:6px 12px; font-size:12px;' });
+      var cancel = el('button', { cls: 'btn soft', text: 'Cancel', type: 'button', style: 'padding:6px 12px; font-size:12px;' });
+      form.appendChild(nameInput); form.appendChild(create); form.appendChild(cancel);
+      document.querySelector('.matrix-tabs').insertAdjacentElement('afterend', form);
+      cancel.addEventListener('click', function () { form.remove(); });
+      create.addEventListener('click', function () {
+        if (!nameInput.value.trim()) { nameInput.focus(); return; }
+        var s = CUSTOM_REGIONS.get();
+        s.custom.push({ name: nameInput.value.trim(), createdAt: Date.now() });
+        CUSTOM_REGIONS.set(s, true);
+        Arkk.toast('Created ' + nameInput.value.trim() + ' | add regional cells from the matrix once entities are mapped.');
+        form.remove();
+      });
+    });
+  }
+
+  /* ---- Export ---- */
+  var headerBtns = document.querySelectorAll('.page-meta .btn');
+  var exportBtn = Array.prototype.filter.call(headerBtns, function (b) { return /Export/.test(b.textContent); })[0];
+  if (exportBtn) {
+    exportBtn.addEventListener('click', function () {
+      var rows = flatRows(currentRegion).map(function (r) { return [r.group + ' ' + r.sub, r.rollup, RULE_LABEL[r.rule]]; });
+      Arkk.exportCSV('northgate-q4-2024-cost-matrix-' + currentRegion + '.csv', ['Entity group', 'Rollup', 'Rule'], rows);
+    });
+  }
+
+  /* ---- Quality check ---- */
+  var qualityBtn = Array.prototype.filter.call(headerBtns, function (b) { return /Quality check/.test(b.textContent); })[0];
+  if (qualityBtn) {
+    qualityBtn.addEventListener('click', function () {
+      if (document.querySelector('.arkk-quality-result')) return;
+      var origLabel = qualityBtn.textContent;
+      setTrailingText(qualityBtn, 'Checking...');
+      qualityBtn.disabled = true;
+      setTimeout(function () {
+        qualityBtn.disabled = false;
+        setTrailingText(qualityBtn, origLabel.replace(/^\s+/, ''));
+        var panel = el('div', { cls: 'arkk-quality-result', style: 'display:flex; align-items:center; gap:12px; padding:12px 16px; margin:12px 0; background: linear-gradient(180deg, var(--peach-soft), var(--surface)); border-radius: var(--r-md);' });
+        var body = el('div', { style: 'flex:1; font-size:13px; color:var(--ink-2);' });
+        body.appendChild(el('b', { text: '3 cells at review | 2 flagged for markup', style: 'color:var(--ink);' }));
+        panel.appendChild(body);
+        var goto = el('a', { cls: 'btn ghost', text: 'Review flagged cells', style: 'padding:5px 10px; font-size:12px;' });
+        goto.href = 'matrix-edit.html';
+        panel.appendChild(goto);
+        document.querySelector('.matrix-tabs').insertAdjacentElement('beforebegin', panel);
+        Arkk.activity.log({ kind: 'data', title: 'Quality check | 3 cells at review, 2 flagged for markup', href: 'matrix.html' });
+      }, Arkk.reduce ? 0 : 1200);
+    });
+  }
+
+  /* ---- Manage rules ---- */
+  var manageRulesBtn = Array.prototype.filter.call(document.querySelectorAll('.impact .btn.ghost'), function (b) { return /Manage rules/.test(b.textContent); })[0];
+  if (manageRulesBtn) {
+    manageRulesBtn.addEventListener('click', function () {
+      var overlay = Arkk.overlay({ mode: 'drawer', label: 'Manage rules' });
+      var wrap = overlay.body;
+      wrap.style.padding = '0';
+      var head = el('div', { style: 'padding:16px 18px; border-bottom:1px solid var(--line-2);' });
+      head.appendChild(el('div', { text: 'Markup rules', style: 'font-size:15px; font-weight:600; color:var(--ink);' }));
+      wrap.appendChild(head);
+      var body = el('div', { style: 'padding:14px 18px;' });
+      document.querySelectorAll('.rule-list .rule-row').forEach(function (row) {
+        var pillText = row.querySelector('.pill').textContent;
+        var meta = row.querySelector('.rule-meta').textContent;
+        var r = el('div', { style: 'display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--line-2);' });
+        r.appendChild(el('span', { text: pillText, style: 'font-size:13px; color:var(--ink);' }));
+        r.appendChild(el('span', { text: meta, style: 'font-size:12px; color:var(--ink-3);' }));
+        body.appendChild(r);
+      });
+      var editLink = el('a', { cls: 'btn', text: 'Edit a cell', style: 'margin-top:14px; display:inline-flex;' });
+      editLink.href = 'matrix-edit.html';
+      body.appendChild(editLink);
+      wrap.appendChild(body);
+    });
+  }
+
+  /* ---- Change report ---- */
+  var changeReportLink = document.querySelector('a[data-quiet="Change report"]');
+  if (changeReportLink) {
+    changeReportLink.removeAttribute('data-quiet');
+    changeReportLink.addEventListener('click', function (e) { e.preventDefault(); window.location.href = 'reports.html#change-report'; });
+  }
+
+  /* ---- Initial paint: route through the same render() pipeline every tab
+     click uses, instead of leaving the hand-authored static markup as the
+     de-facto "first" render. One renderer + one data shape (REGION_DATA)
+     covers all four tabs, so the first paint, every tab switch, and every
+     re-render produce the same entity-group treatment and cell wiring
+     ("More entities" included - it is built inside subCell(), so it works
+     on every tab and survives re-renders). */
+  render();
+});
+</script>
+
+</body>
+</html>

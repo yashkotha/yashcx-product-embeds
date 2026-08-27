@@ -1,0 +1,1737 @@
+/* =========================================================================
+   Arkk · Transfer Pricing — Peec AI inspired design system
+   ========================================================================= */
+
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@1,9..144,400&display=swap");
+
+:root {
+  /* --- Brand & accents --- */
+  --brand: oklch(54% 0.19 254);
+  --brand-2: oklch(48% 0.21 256);
+  --brand-soft: oklch(96% 0.03 254);
+  --brand-tint: oklch(98% 0.014 254);
+  --brand-line: oklch(86% 0.06 254);
+
+  /* Mint / positive (Peec lime-mint inspiration) */
+  --mint: oklch(72% 0.13 162);
+  --mint-soft: oklch(94% 0.06 162);
+  --mint-line: oklch(86% 0.10 162);
+  --mint-ink: oklch(34% 0.10 162);
+
+  /* Peach / warning */
+  --peach: oklch(76% 0.13 60);
+  --peach-soft: oklch(95% 0.06 60);
+  --peach-line: oklch(86% 0.10 60);
+  --peach-ink: oklch(44% 0.13 60);
+
+  /* Coral / danger */
+  --coral: oklch(64% 0.18 25);
+  --coral-soft: oklch(95% 0.04 25);
+  --coral-line: oklch(86% 0.08 25);
+  --coral-ink: oklch(40% 0.14 25);
+
+  /* Lilac / accent (Peec uses subtle lilac for AI moments) */
+  --lilac: oklch(72% 0.12 295);
+  --lilac-soft: oklch(95% 0.04 295);
+  --lilac-ink: oklch(42% 0.13 295);
+
+  /* --- Ink scale (near-black on warm cream) --- */
+  --ink: oklch(18% 0.014 254);
+  --ink-2: oklch(34% 0.012 254);
+  --ink-3: oklch(50% 0.010 254);
+  --ink-4: oklch(66% 0.008 254);
+
+  /* --- Surface scale (warm cream, Peec-style) --- */
+  --line: oklch(92% 0.005 80);
+  --line-2: oklch(94% 0.004 80);
+  --bg: oklch(98.5% 0.006 88);
+  --bg-2: oklch(96.8% 0.008 88);
+  --bg-3: oklch(99.2% 0.004 88);
+  --surface: oklch(100% 0 0);
+  --surface-glass: oklch(100% 0 0 / 0.7);
+
+  /* --- Radii / shadows / motion --- */
+  --r-sm: 6px;
+  --r: 10px;
+  --r-md: 14px;
+  --r-lg: 18px;
+  --r-xl: 24px;
+
+  --shadow-1: 0 1px 0 oklch(0% 0 0 / 0.02), 0 1px 2px oklch(20% 0 0 / 0.03);
+  --shadow-2: 0 1px 0 oklch(0% 0 0 / 0.02), 0 6px 18px oklch(40% 0.04 254 / 0.05);
+  --shadow-pop: 0 1px 0 oklch(0% 0 0 / 0.04), 0 12px 32px oklch(40% 0.06 254 / 0.12), 0 32px 60px oklch(40% 0.06 254 / 0.08);
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.83, 0, 0.17, 1);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: "Geist", ui-sans-serif, system-ui, sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(900px 480px at 92% -10%, oklch(94% 0.05 160 / 0.45), transparent 60%),
+    radial-gradient(720px 480px at -8% 22%, oklch(94% 0.05 60 / 0.40), transparent 55%),
+    radial-gradient(640px 400px at 50% 110%, oklch(94% 0.05 295 / 0.30), transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "ss01","cv11";
+  letter-spacing: -0.005em;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.mono { font-family: "Geist Mono", ui-monospace, SFMono-Regular, monospace; font-feature-settings: "tnum","zero"; letter-spacing: 0; }
+.serif-em { font-family: "Fraunces", serif; font-style: italic; font-weight: 400; letter-spacing: -0.015em; }
+
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+input, textarea { font: inherit; color: inherit; }
+::selection { background: oklch(94% 0.05 162); color: var(--ink); }
+
+/* =========================================================================
+   APP SHELL
+   ========================================================================= */
+.app {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  min-height: 100vh;
+}
+
+/* --- Icon rail (slim, glass, no heavy bar) --- */
+.rail {
+  position: sticky; top: 0;
+  height: 100vh;
+  background: linear-gradient(180deg, oklch(100% 0 0 / 0.7), oklch(100% 0 0 / 0.5));
+  backdrop-filter: saturate(140%) blur(14px);
+  -webkit-backdrop-filter: saturate(140%) blur(14px);
+  border-right: 1px solid var(--line);
+  display: flex; flex-direction: column; align-items: center;
+  padding: 14px 0 18px;
+  gap: 4px;
+  z-index: 30;
+}
+.rail .logo {
+  width: 36px; height: 36px; border-radius: 11px;
+  display: grid; place-items: center;
+  background: linear-gradient(180deg, var(--brand), var(--brand-2));
+  color: white; font-weight: 600; font-size: 14px;
+  letter-spacing: -0.03em;
+  box-shadow:
+    inset 0 1px 0 oklch(100% 0 0 / 0.25),
+    0 4px 10px oklch(54% 0.19 254 / 0.25);
+  margin-bottom: 12px;
+}
+.rail .nav { display: flex; flex-direction: column; gap: 2px; align-items: center; }
+.rail .nav .item {
+  width: 40px; height: 40px; border-radius: 11px;
+  display: grid; place-items: center;
+  color: var(--ink-3);
+  position: relative;
+  transition: background .15s, color .15s;
+}
+.rail .nav .item:hover { background: var(--brand-tint); color: var(--ink); }
+.rail .nav .item.active { color: var(--brand); background: var(--brand-soft); }
+.rail .spacer { flex: 1; }
+.rail .me {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: linear-gradient(135deg, oklch(72% 0.12 254), oklch(58% 0.18 254));
+  color: white; display: grid; place-items: center; font-size: 11px; font-weight: 600;
+  border: 2px solid oklch(100% 0 0 / 0.7);
+}
+
+/* --- Icon helpers --- */
+.ico    { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.ico-sm { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.ico-xs { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* =========================================================================
+   TOP BAR (sticky glass) + step navigation
+   ========================================================================= */
+.main { min-width: 0; }
+
+.topbar {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px 26px;
+  background: var(--surface-glass);
+  backdrop-filter: saturate(140%) blur(14px);
+  -webkit-backdrop-filter: saturate(140%) blur(14px);
+  border-bottom: 1px solid var(--line);
+}
+.crumbs { display: flex; align-items: center; gap: 8px; color: var(--ink-3); font-size: 13px; min-width: 0; }
+.crumbs .ws {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 4px 10px 4px 6px; border-radius: 999px;
+  background: oklch(100% 0 0 / 0.85); border: 1px solid var(--line);
+  color: var(--ink); font-weight: 500;
+}
+.crumbs .ws .dot { width: 18px; height: 18px; border-radius: 6px; background: linear-gradient(135deg, oklch(60% 0.18 254), oklch(48% 0.20 256)); }
+.crumbs .sep { color: var(--ink-4); }
+.crumbs a { color: var(--brand); }
+.crumbs .here { color: var(--ink); font-weight: 500; }
+
+.search {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px;
+  background: oklch(100% 0 0 / 0.85); border: 1px solid var(--line); border-radius: 8px;
+  min-width: 320px;
+  color: var(--ink-3); font-size: 13px;
+}
+.search input { flex: 1; border: 0; outline: 0; background: transparent; color: var(--ink); }
+.kbd {
+  display: inline-flex; align-items: center;
+  border: 1px solid var(--line); background: var(--bg-2);
+  border-radius: 5px; padding: 1px 6px; color: var(--ink-3);
+  font-family: "Geist Mono", monospace; font-size: 11px;
+}
+.top-actions { display: flex; align-items: center; gap: 6px; }
+.icon-btn {
+  width: 32px; height: 32px; border-radius: 8px;
+  display: grid; place-items: center;
+  color: var(--ink-3);
+  border: 1px solid transparent;
+  position: relative;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.icon-btn:hover { background: oklch(100% 0 0 / 0.9); border-color: var(--line); color: var(--ink); }
+.icon-btn .ping {
+  position: absolute; top: 6px; right: 6px;
+  width: 6px; height: 6px; border-radius: 50%; background: var(--coral);
+  box-shadow: 0 0 0 2px var(--bg-3);
+}
+
+/* --- Flow nav (the new step tabs at top — shows where in the e2e flow you are) --- */
+.flow-nav {
+  position: sticky; top: 53px; z-index: 19;
+  display: flex; align-items: center; gap: 4px;
+  padding: 8px 26px;
+  background: oklch(100% 0 0 / 0.55);
+  backdrop-filter: saturate(140%) blur(10px);
+  -webkit-backdrop-filter: saturate(140%) blur(10px);
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+}
+.flow-nav a {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 12px; border-radius: 8px;
+  font-size: 13px; color: var(--ink-3);
+  white-space: nowrap;
+  transition: background .15s, color .15s;
+}
+.flow-nav a:hover { background: oklch(100% 0 0 / 0.85); color: var(--ink); }
+.flow-nav a.active { background: var(--ink); color: oklch(98% 0.005 254); }
+.flow-nav a .n {
+  font-family: "Geist Mono", monospace; font-size: 11px;
+  color: var(--ink-4);
+  padding: 1px 6px; border-radius: 5px; border: 1px solid var(--line);
+  background: var(--bg-3);
+}
+.flow-nav a.active .n { color: oklch(70% 0.005 254); border-color: oklch(28% 0.014 254); background: oklch(24% 0.014 254); }
+.flow-nav .next-hint {
+  margin-left: auto;
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--ink-3);
+  padding: 6px 10px;
+}
+
+/* =========================================================================
+   PAGE HEADERS, TYPE, BUTTONS, BADGES (PEEC-INSPIRED)
+   ========================================================================= */
+
+.page {
+  padding: 28px 28px 96px;
+  max-width: 1480px;
+  margin: 0 auto;
+}
+
+.page-head {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: end;
+  gap: 28px;
+  padding-bottom: 22px;
+}
+.page-eyebrow {
+  display: inline-flex; align-items: center; gap: 10px;
+  color: var(--ink-3); font-size: 12px;
+  margin-bottom: 10px;
+}
+.page-eyebrow .pip {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--brand);
+  box-shadow: 0 0 0 4px oklch(54% 0.19 254 / 0.12);
+}
+.page-title {
+  font-size: clamp(32px, 3.4vw, 48px);
+  font-weight: 400;
+  margin: 0 0 8px;
+  letter-spacing: -0.035em;
+  color: var(--ink);
+  line-height: 1.02;
+}
+.page-title em {
+  font-family: "Fraunces", serif; font-style: italic; font-weight: 400;
+  color: var(--brand-2); letter-spacing: -0.04em;
+}
+.page-sub {
+  color: var(--ink-3); font-size: 14px; max-width: 70ch; margin: 0;
+}
+.page-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+
+/* --- Buttons --- */
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 12px; border-radius: 8px;
+  font-size: 13px; font-weight: 500;
+  white-space: nowrap;
+  border: 1px solid var(--line);
+  background: oklch(100% 0 0 / 0.85);
+  color: var(--ink);
+  transition: background .15s, border-color .15s, transform .12s;
+}
+.btn:hover { background: oklch(100% 0 0 / 1); border-color: oklch(85% 0.01 254); }
+.btn:active { transform: translateY(0.5px); }
+.btn.ghost { background: transparent; border-color: transparent; color: var(--ink-2); }
+.btn.ghost:hover { background: oklch(100% 0 0 / 0.7); color: var(--ink); }
+.btn.primary {
+  background: var(--ink);
+  color: oklch(98% 0.005 254);
+  border-color: transparent;
+}
+.btn.primary:hover { background: oklch(10% 0.014 254); }
+.btn.brand {
+  background: linear-gradient(180deg, var(--brand), var(--brand-2));
+  color: white; border-color: transparent;
+  box-shadow:
+    inset 0 1px 0 oklch(100% 0 0 / 0.18),
+    0 1px 0 oklch(0% 0 0 / 0.04),
+    0 6px 16px oklch(54% 0.19 254 / 0.22);
+}
+.btn.brand:hover { filter: brightness(1.04); }
+.btn .ico { width: 15px; height: 15px; }
+
+/* --- Status pills --- */
+.status-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px 3px 8px; border-radius: 999px;
+  font-size: 12px; font-weight: 500;
+  white-space: nowrap;
+  border: 1px solid;
+}
+.status-pill .dot { width: 6px; height: 6px; border-radius: 50%; }
+.status-pill.in-progress { color: var(--brand-2); background: var(--brand-soft); border-color: var(--brand-line); }
+.status-pill.in-progress .dot { background: var(--brand); }
+.status-pill.done { color: var(--mint-ink); background: var(--mint-soft); border-color: var(--mint-line); }
+.status-pill.done .dot { background: var(--mint); }
+.status-pill.queued { color: var(--ink-3); background: var(--bg-2); border-color: var(--line); }
+.status-pill.queued .dot { background: var(--ink-3); }
+.status-pill.warn { color: var(--peach-ink); background: var(--peach-soft); border-color: var(--peach-line); }
+.status-pill.warn .dot { background: var(--peach); }
+.status-pill.danger { color: var(--coral-ink); background: var(--coral-soft); border-color: var(--coral-line); }
+.status-pill.danger .dot { background: var(--coral); }
+
+/* --- Avatar stack --- */
+.stack { display: inline-flex; align-items: center; }
+.stack .av {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 2px solid var(--surface); margin-right: -6px;
+  display: grid; place-items: center; font-size: 10px; font-weight: 500; color: white;
+}
+.stack .av:nth-child(1) { background: linear-gradient(135deg, oklch(72% 0.13 254), oklch(54% 0.18 254)); }
+.stack .av:nth-child(2) { background: linear-gradient(135deg, oklch(72% 0.13 162), oklch(54% 0.16 162)); z-index: 1; }
+.stack .av:nth-child(3) { background: linear-gradient(135deg, oklch(78% 0.13 50), oklch(60% 0.17 50)); z-index: 2; }
+.stack .av:nth-child(4) { background: linear-gradient(135deg, oklch(78% 0.13 295), oklch(58% 0.18 295)); z-index: 3; }
+
+/* =========================================================================
+   CARDS / BENTO LAYOUTS
+   ========================================================================= */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 18px 20px;
+  position: relative;
+}
+.card.flush { padding: 0; }
+.card-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line-2);
+}
+.card-title {
+  font-size: 13px; font-weight: 500;
+  display: flex; align-items: center; gap: 8px;
+}
+.card-title .num-badge {
+  font-family: "Geist Mono", monospace; font-size: 10px;
+  background: var(--bg-2); color: var(--ink-3);
+  padding: 1px 6px; border-radius: 5px; border: 1px solid var(--line);
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+.card-foot {
+  font-size: 12px; color: var(--ink-3); padding: 12px 18px;
+  border-top: 1px solid var(--line-2);
+  display: flex; align-items: center; gap: 8px;
+}
+
+/* =========================================================================
+   SCORE / METRIC CARDS (PEEC-style large numerics)
+   ========================================================================= */
+
+.score-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 22px 22px 20px;
+  display: flex; flex-direction: column; gap: 4px;
+  position: relative;
+  overflow: hidden;
+}
+.score-card .label {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--ink-3); font-size: 12px;
+}
+.score-card .v {
+  font-family: "Geist", sans-serif;
+  font-weight: 400;
+  font-size: clamp(36px, 3.6vw, 52px);
+  line-height: 1.0;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+  display: flex; align-items: baseline; gap: 6px;
+  margin-top: 8px;
+  white-space: nowrap;
+}
+.score-card .v .unit { font-size: 0.5em; color: var(--ink-3); letter-spacing: -0.02em; font-weight: 400; }
+.score-card .delta {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-family: "Geist Mono", monospace; font-size: 12px;
+  color: var(--mint-ink);
+  background: var(--mint-soft);
+  padding: 2px 7px;
+  border-radius: 5px;
+  border: 1px solid var(--mint-line);
+  margin-left: 8px;
+  white-space: nowrap;
+}
+.score-card .delta.down { color: var(--coral-ink); background: var(--coral-soft); border-color: var(--coral-line); }
+.score-card .sub {
+  color: var(--ink-3); font-size: 12px;
+  margin-top: 6px;
+}
+.score-card .micro {
+  margin-top: 14px;
+}
+
+/* Sparkline */
+.spark { display: block; }
+.spark path.line { fill: none; stroke: var(--brand); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.spark path.area { fill: oklch(54% 0.19 254 / 0.10); stroke: none; }
+.spark.mint path.line { stroke: var(--mint); }
+.spark.mint path.area { fill: oklch(72% 0.13 162 / 0.18); }
+.spark.coral path.line { stroke: var(--coral); }
+.spark.coral path.area { fill: oklch(64% 0.18 25 / 0.14); }
+
+/* Bars (Peec-style horizontal bars) */
+.bars { display: flex; flex-direction: column; gap: 8px; }
+.bar-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; font-size: 12px; color: var(--ink-2); }
+.bar-row .bar-track { height: 10px; background: var(--bg-2); border-radius: 5px; border: 1px solid var(--line-2); overflow: hidden; position: relative; }
+.bar-row .bar-fill { height: 100%; background: linear-gradient(90deg, var(--brand), var(--brand-2)); border-radius: 4px; }
+.bar-row .bar-fill.mint { background: linear-gradient(90deg, var(--mint), oklch(58% 0.13 162)); }
+.bar-row .bar-fill.peach { background: linear-gradient(90deg, var(--peach), oklch(58% 0.13 60)); }
+.bar-row .bar-fill.coral { background: linear-gradient(90deg, var(--coral), oklch(48% 0.18 25)); }
+/* QA fix: the value column was a fixed 80px, so any label longer than a bare
+   percentage (e.g. "CONNECT FINCO | £ 14.2m") wrapped the entity name AND
+   shattered the currency across 3 lines. auto + nowrap lets the column size
+   to whatever the row actually needs and keeps each value one unbroken line;
+   the track (1fr) simply gives up the room the label column now takes. */
+.bar-row .val { font-family: "Geist Mono", monospace; text-align: right; color: var(--ink); white-space: nowrap; }
+
+/* Donut */
+.donut { display: block; }
+.donut .track { stroke: var(--bg-2); }
+.donut .fill { stroke: var(--brand); stroke-linecap: round; transform-origin: center; transform: rotate(-90deg); }
+
+/* =========================================================================
+   PILLS (matrix values etc.)
+   ========================================================================= */
+
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 9px; border-radius: 6px;
+  font-size: 12px; font-weight: 500;
+  border: 1px solid transparent;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+}
+.pill .dot { width: 6px; height: 6px; border-radius: 50%; }
+.pill.markup-7 { background: var(--brand-soft); color: var(--brand-2); border-color: var(--brand-line); }
+.pill.markup-7 .dot { background: var(--brand); }
+.pill.markup-5 { background: oklch(96% 0.035 200); color: oklch(40% 0.13 220); border-color: oklch(86% 0.07 220); }
+.pill.markup-5 .dot { background: oklch(58% 0.16 220); }
+.pill.at-cost { background: var(--bg-2); color: var(--ink-2); border-color: var(--line); }
+.pill.at-cost .dot { background: var(--ink-3); }
+.pill.exclude { background: var(--coral-soft); color: var(--coral-ink); border-color: var(--coral-line); }
+.pill.exclude .dot { background: var(--coral); }
+.pill.ignore { color: var(--ink-4); border-color: var(--line-2); background: transparent; }
+.pill.ignore .dot { background: var(--ink-4); }
+.pill.lilac { background: var(--lilac-soft); color: var(--lilac-ink); border-color: oklch(86% 0.08 295); }
+.pill.lilac .dot { background: var(--lilac); }
+
+/* =========================================================================
+   DATA TABLE (Peec-style compact)
+   ========================================================================= */
+table.data {
+  width: 100%; border-collapse: separate; border-spacing: 0;
+  font-size: 13px;
+}
+table.data thead th {
+  font-weight: 500;
+  text-align: left;
+  color: var(--ink-3);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 10px 16px;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--line);
+  border-top: 1px solid var(--line);
+  position: sticky; top: 0;
+}
+table.data tbody td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line-2);
+  vertical-align: middle;
+  color: var(--ink-2);
+}
+table.data tbody tr:hover td { background: var(--bg-3); }
+table.data tbody tr:last-child td { border-bottom: 0; }
+table.data .rank {
+  font-family: "Geist Mono", monospace;
+  font-size: 13px;
+  color: var(--ink-3);
+  width: 32px;
+}
+table.data .name {
+  display: flex; align-items: center; gap: 10px;
+  color: var(--ink); font-weight: 500;
+}
+table.data .name .ent-av {
+  width: 26px; height: 26px; border-radius: 7px;
+  background: linear-gradient(135deg, oklch(86% 0.04 254), oklch(74% 0.05 254));
+  color: var(--brand-2);
+  display: grid; place-items: center;
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 0;
+}
+table.data .name .ent-av.alt { background: linear-gradient(135deg, oklch(90% 0.05 162), oklch(75% 0.08 162)); color: var(--mint-ink); }
+table.data .name .ent-av.alt2 { background: linear-gradient(135deg, oklch(90% 0.05 60), oklch(78% 0.10 60)); color: var(--peach-ink); }
+table.data .name .ent-av.alt3 { background: linear-gradient(135deg, oklch(90% 0.04 295), oklch(78% 0.08 295)); color: var(--lilac-ink); }
+table.data .num {
+  font-family: "Geist Mono", monospace;
+  color: var(--ink);
+  text-align: right;
+  /* QA fix: currency cells like "£ 112.4 m" were shattering onto 3 lines
+     (one word per line) once the auto table layout starved this column -
+     nowrap keeps the whole figure on one line and forces the table to take
+     the room from a more flexible column (name/trend) instead. */
+  white-space: nowrap;
+}
+table.data .delta-up { color: var(--mint-ink); }
+table.data .delta-down { color: var(--coral-ink); }
+table.data tbody td .row-spark { transform: translateY(2px); }
+/* QA fix: give that reclaimed room to the entity name (was wrapping to 3
+   cramped lines) by asking less of the decorative trend sparkline. */
+table.data tbody td .row-spark { width: 56px; height: 20px; }
+
+/* =========================================================================
+   PIPELINE (the step bar)
+   ========================================================================= */
+.pipeline {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+.step {
+  position: relative;
+  border-radius: 12px;
+  padding: 12px 14px 14px;
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  min-height: 96px;
+  display: flex; flex-direction: column;
+}
+.step .step-eyebrow {
+  font-family: "Geist Mono", monospace; font-size: 10px;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--ink-4);
+}
+.step .step-name { font-size: 13px; font-weight: 500; margin-top: 6px; line-height: 1.3; }
+.step .step-progress {
+  height: 4px;
+  background: oklch(100% 0 0 / 0.55);
+  border-radius: 2px;
+  border: 1px solid oklch(100% 0 0 / 0.6);
+  overflow: hidden;
+  margin: 10px 0 6px;
+}
+.step .step-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width .4s ease-out;
+}
+.step.done .step-progress-fill { background: linear-gradient(90deg, oklch(58% 0.13 162), var(--mint)); box-shadow: 0 0 5px oklch(58% 0.13 162 / 0.3); }
+.step.active .step-progress-fill { background: linear-gradient(90deg, var(--brand-2), var(--brand)); box-shadow: 0 0 6px oklch(54% 0.19 254 / 0.35); }
+.step.next .step-progress-fill { width: 0; }
+
+.step .step-detail {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-2);
+  display: flex; align-items: center; gap: 6px;
+}
+.step.done .step-detail { color: var(--mint-ink); }
+.step.active .step-detail { color: var(--brand); }
+.step.next .step-detail { color: var(--ink-4); font-weight: 400; }
+
+.step .step-meta {
+  font-family: "Geist Mono", monospace;
+  font-size: 10px;
+  color: var(--ink-4);
+  margin-top: auto;
+  padding-top: 8px;
+  letter-spacing: 0;
+}
+
+.step .step-mark {
+  width: 18px; height: 18px; border-radius: 50%; position: absolute; top: 14px; right: 14px;
+  display: grid; place-items: center;
+  background: var(--bg-2); color: var(--ink-3);
+}
+.step.done { background: var(--mint-soft); border-color: var(--mint-line); }
+.step.done .step-mark { background: var(--mint); color: white; }
+.step.done .step-eyebrow { color: var(--mint-ink); }
+.step.active { background: var(--brand-soft); border-color: var(--brand-line); }
+.step.active .step-mark { background: var(--brand); color: white; box-shadow: 0 0 0 4px oklch(54% 0.19 254 / 0.18); }
+.step.active .step-eyebrow { color: var(--brand); }
+.step.next { background: var(--surface); }
+
+/* =========================================================================
+   MATRIX
+   ========================================================================= */
+.matrix-wrap {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.matrix-meta {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, oklch(100% 0 0), oklch(100% 0 0 / 0.6));
+}
+.legend { display: flex; align-items: center; gap: 14px; font-size: 12px; color: var(--ink-3); }
+.legend .lg { display: inline-flex; align-items: center; gap: 6px; }
+.legend .sw { width: 10px; height: 10px; border-radius: 3px; }
+.sw.markup-7 { background: oklch(82% 0.10 254); }
+.sw.markup-5 { background: oklch(84% 0.08 220); }
+.sw.at-cost { background: oklch(88% 0.01 254); border: 1px solid var(--line); }
+.sw.exclude { background: oklch(86% 0.10 25); }
+.sw.ignore { background: var(--bg-2); border: 1px solid var(--line); }
+
+table.matrix {
+  width: 100%; border-collapse: separate; border-spacing: 0;
+  font-size: 13px;
+}
+table.matrix th, table.matrix td {
+  padding: 12px 14px;
+  vertical-align: middle;
+  border-right: 1px solid var(--line-2);
+  border-bottom: 1px solid var(--line-2);
+  text-align: left;
+  background: var(--surface);
+}
+table.matrix thead th {
+  font-weight: 500; color: var(--ink-3); font-size: 11px;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  background: var(--bg-2);
+}
+table.matrix .col-group {
+  text-align: center; color: var(--ink); font-weight: 500;
+  font-size: 13px; text-transform: none; letter-spacing: 0;
+}
+table.matrix .col-sub {
+  text-align: center; color: var(--ink-3); font-size: 12px;
+  font-weight: 400; text-transform: none; letter-spacing: 0;
+}
+table.matrix .row-group {
+  font-weight: 500; color: var(--ink); background: var(--bg-2); font-size: 13px;
+  text-transform: none; letter-spacing: 0;
+}
+table.matrix .row-sub { color: var(--ink-3); font-size: 12px; }
+table.matrix tr:last-child td { border-bottom: 0; }
+table.matrix td:last-child, table.matrix th:last-child { border-right: 0; }
+table.matrix td.cell {
+  text-align: center; cursor: pointer; transition: background .12s;
+  position: relative;
+}
+table.matrix td.cell:hover { background: var(--brand-tint); }
+table.matrix td.cell.flagged {
+  background: linear-gradient(180deg, oklch(98% 0.04 80 / 0.6), oklch(98% 0.04 80 / 0.2));
+}
+table.matrix td.cell.flagged::after {
+  content: ""; position: absolute; top: 8px; right: 8px;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--peach);
+  box-shadow: 0 0 0 3px oklch(70% 0.14 75 / 0.18);
+}
+table.matrix td.cell.selected {
+  background: var(--brand-soft);
+  box-shadow: inset 0 0 0 2px var(--brand);
+}
+
+/* =========================================================================
+   HIERARCHY TREE
+   ========================================================================= */
+.hier {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md);
+  overflow: hidden;
+}
+.hier-head {
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px;
+  padding: 14px 18px; border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, oklch(100% 0 0), oklch(100% 0 0 / 0.6));
+}
+.hier-search {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: 8px; max-width: 360px; width: 100%;
+  color: var(--ink-3); font-size: 13px;
+}
+.hier-search input { flex: 1; background: transparent; border: 0; outline: 0; color: var(--ink); }
+
+.tree { padding: 10px 12px 16px; }
+.tree-row {
+  display: grid;
+  grid-template-columns: 24px 24px 1fr auto;
+  align-items: center; gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  color: var(--ink-2); font-size: 13px;
+  position: relative;
+}
+.tree-row:hover { background: var(--brand-tint); }
+.tree-row .twirl {
+  width: 18px; height: 18px; display: grid; place-items: center; color: var(--ink-3);
+  border-radius: 4px;
+}
+.tree-row .twirl:hover { background: oklch(100% 0 0); color: var(--ink); }
+.tree-row .twirl.empty { visibility: hidden; }
+.tree-row .label {
+  display: flex; align-items: center; gap: 8px;
+  color: var(--ink);
+}
+.tree-row .label .id { font-family: "Geist Mono", monospace; font-size: 12px; color: var(--ink-3); }
+.tree-row .meta { display: flex; align-items: center; gap: 8px; color: var(--ink-3); font-size: 12px; }
+.tree-row .actions { display: none; align-items: center; gap: 2px; }
+.tree-row:hover .actions { display: inline-flex; }
+.tree-row .actions .icon-btn { width: 26px; height: 26px; }
+.tree-row.group {
+  background: var(--brand-soft);
+  border: 1px solid var(--brand-line);
+  margin: 6px 0 2px;
+}
+.tree-row.group .label .name { color: var(--brand-2); font-weight: 500; }
+.tree-row.group .label .id { color: oklch(50% 0.15 254); }
+.indent { padding-left: 14px; border-left: 1px dashed var(--line); margin-left: 22px; }
+.indent .indent { margin-left: 16px; }
+
+.tree-row.dragging {
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
+  transform: translateX(150px) rotate(-0.6deg);
+  border: 1px solid var(--brand-line);
+  z-index: 5;
+}
+.drop-line {
+  height: 2px; background: var(--brand); border-radius: 2px;
+  margin: 4px 36px 4px 70px;
+  box-shadow: 0 0 0 4px oklch(54% 0.19 254 / 0.14);
+  position: relative;
+}
+.drop-line::before {
+  content: ""; position: absolute; left: -5px; top: -3px;
+  width: 8px; height: 8px; border-radius: 50%; background: var(--brand);
+}
+.count {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: "Geist Mono", monospace; font-size: 11px;
+  color: var(--ink-3); background: var(--bg-2); border: 1px solid var(--line-2);
+  padding: 1px 6px; border-radius: 5px;
+}
+
+/* =========================================================================
+   ANNOTATION / SIDE PANEL (edit intersection)
+   ========================================================================= */
+.annotate {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 18px;
+}
+.annotate .a-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-bottom: 12px; border-bottom: 1px solid var(--line-2); margin-bottom: 14px;
+}
+.annotate .a-title { font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+.annotate .a-title .ico-sm { color: var(--brand); }
+.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.field label {
+  font-size: 10px; color: var(--ink-3);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  font-family: "Geist Mono", monospace;
+}
+.row-key {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; border-radius: 8px;
+  background: var(--bg-2); border: 1px solid var(--line-2);
+  font-size: 13px;
+}
+.select {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 10px; border-radius: 8px;
+  background: var(--surface); border: 1px solid var(--line);
+  font-size: 13px;
+}
+.select.primary { border-color: var(--brand-line); background: var(--brand-soft); color: var(--brand-2); font-weight: 500; }
+.annotate textarea {
+  width: 100%; min-height: 64px; font: inherit; font-size: 13px;
+  padding: 10px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--bg-2); color: var(--ink); resize: vertical;
+}
+.annotate textarea:focus { outline: 2px solid oklch(54% 0.19 254 / 0.25); border-color: var(--brand-line); background: white; }
+
+/* =========================================================================
+   FILTER CHIPS
+   ========================================================================= */
+.toolbar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 16px 0;
+  flex-wrap: wrap;
+}
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 10px; border-radius: 8px;
+  background: var(--surface); border: 1px solid var(--line);
+  font-size: 12px; color: var(--ink-2);
+}
+.chip.add { color: var(--ink-3); border-style: dashed; background: transparent; }
+.chip strong { color: var(--ink); font-weight: 500; }
+.seg {
+  display: inline-flex; align-items: center;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 8px; padding: 2px;
+  margin-left: auto;
+}
+.seg button {
+  padding: 5px 10px; font-size: 12px; color: var(--ink-3); border-radius: 6px;
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.seg button.on { background: var(--ink); color: oklch(98% 0.005 254); }
+
+/* =========================================================================
+   FEED / TIMELINE
+   ========================================================================= */
+.feed { display: flex; flex-direction: column; }
+.feed-item {
+  display: grid; grid-template-columns: 28px 1fr auto; gap: 12px; padding: 12px 0;
+  border-bottom: 1px solid var(--line-2);
+}
+.feed-item:last-child { border-bottom: 0; }
+.feed-avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: linear-gradient(135deg, oklch(78% 0.07 254), oklch(60% 0.13 254));
+  color: white; display: grid; place-items: center; font-size: 11px; font-weight: 500;
+}
+.feed-avatar.alt { background: linear-gradient(135deg, oklch(78% 0.09 22), oklch(62% 0.17 22)); }
+.feed-avatar.alt2 { background: linear-gradient(135deg, oklch(78% 0.09 162), oklch(58% 0.15 162)); }
+.feed-body { font-size: 13px; line-height: 1.5; color: var(--ink-2); }
+.feed-body b { color: var(--ink); font-weight: 500; }
+.feed-time { font-size: 12px; color: var(--ink-4); white-space: nowrap; }
+
+/* =========================================================================
+   UTILITIES
+   ========================================================================= */
+.row { display: flex; align-items: center; gap: 10px; }
+.col { display: flex; flex-direction: column; }
+.gap-2 { gap: 8px; } .gap-3 { gap: 12px; } .gap-4 { gap: 16px; } .gap-6 { gap: 24px; }
+.muted { color: var(--ink-3); }
+.muted-2 { color: var(--ink-4); }
+.hr { height: 1px; background: var(--line); border: 0; margin: 0; }
+
+@media (max-width: 1100px) {
+  .pipeline { grid-template-columns: repeat(2, 1fr); }
+  /* QA fix: page-head is "title col | auto button col" - below ~1100px the
+     button group (TP policy / Change report / Export / Quality check /
+     Calculate run, etc.) has nowhere left to shrink and either wraps each
+     label internally ("Change repor|t") or runs off the right edge. Stack
+     the header instead so the title keeps full width and the actions get
+     their own row, wrapping as a whole (never mid-label) if still tight. */
+  .page-head { grid-template-columns: 1fr; }
+  .page-meta { justify-content: flex-start; }
+}
+
+/* =========================================================================
+   OVERRIDE — no dots anywhere; real SVG icons where meaning is needed.
+   ========================================================================= */
+.status-pill .dot,
+.pill .dot,
+.q-tab .dot,
+.page-eyebrow .pip,
+.lp-step .dot,
+.icon-btn .ping,
+.tl-item .dot,
+.move-row .iconz .dot,
+.legend .sw,
+.spark .area + .line + circle,
+.crumbs .ws .dot {
+  display: none !important;
+}
+.status-pill { padding: 3px 11px; }
+.lp-step { gap: 6px; }
+
+/* Workspace badge pseudo — NUKED. The workspace switcher lives in the topbar
+   brand-block now (a real <button class="ws-switch">). Any stray .ws element
+   stays invisible so old caches don't render a phantom green blob. */
+.crumbs .ws,
+.crumbs .ws::before { display: none !important; }
+
+/* Replace .live-dot with a broadcast/wifi icon */
+.live-dot { display: none; }
+.live-ico {
+  width: 14px; height: 14px;
+  color: var(--mint-ink);
+  display: inline-block;
+  vertical-align: -2px;
+  margin-right: 4px;
+  animation: live-pulse 2s var(--ease-out) infinite;
+}
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.55; transform: scale(0.94); }
+}
+
+/* Timeline rail — small icon chip instead of a colored dot */
+.tl-item { grid-template-columns: 22px 1fr auto !important; }
+.tl-ico {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  color: var(--ink-3);
+  margin: 0 auto;
+}
+.tl-ico.active {
+  color: var(--brand);
+  background: var(--brand-soft);
+  border-color: var(--brand-line);
+}
+.tl-ico.mint {
+  color: var(--mint-ink);
+  background: var(--mint-soft);
+  border-color: var(--mint-line);
+}
+
+/* Restore swatch as a small square (was hidden above) — legend still needs visual key */
+.legend .sw {
+  display: inline-block !important;
+  width: 10px; height: 4px; border-radius: 2px;
+}
+
+/* Live progress steps — use small SVG check / circle markers instead of dots */
+.lp-step::before {
+  content: "";
+  width: 12px; height: 12px;
+  display: inline-block;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 12px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a5a4a4' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='8'/></svg>");
+}
+.lp-step.done::before {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23347054' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='9' fill='%2393d4b4'/><path d='M8 12l3 3 5-6' stroke='%231a3d2a'/></svg>");
+}
+.lp-step.active::before {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234c5dab' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='9' fill='%234c5dab'/><path d='M5 12h14' stroke='white'/></svg>");
+}
+
+/* Notifications — replace the .ping with a tiny number badge on the bell instead */
+.icon-btn .badge-num {
+  position: absolute; top: 2px; right: 2px;
+  min-width: 14px; height: 14px; padding: 0 4px;
+  border-radius: 7px;
+  background: var(--coral); color: white;
+  font-family: 'Geist', sans-serif; font-size: 9px; font-weight: 600;
+  display: grid; place-items: center;
+  border: 1.5px solid var(--bg-3);
+  line-height: 1;
+}
+
+/* =========================================================================
+   OVERRIDE v3 — single top nav, unified button system, refined chrome
+   ========================================================================= */
+
+/* (deprecated old icon rail) */
+.rail { display: none !important; }
+.flow-nav { display: none !important; }
+/* App is a two-column grid: left dashboard nav + main */
+.app {
+  display: grid !important;
+  grid-template-columns: 240px 1fr !important;
+  min-height: 100vh;
+}
+
+/* Top bar — four-slot layout (brand + nav + search + actions) */
+.topbar {
+  display: grid !important;
+  grid-template-columns: auto auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 24px;
+}
+.topbar .top-actions { display: flex; align-items: center; gap: 6px; }
+.topbar > .crumbs { display: none; }  /* breadcrumb path moves into the page */
+
+/* Brand block (logo + workspace switcher) */
+.brand-block { display: flex; align-items: center; gap: 8px; }
+.brand-block .logo {
+  width: 30px; height: 30px; border-radius: 8px;
+  display: grid; place-items: center;
+  background: linear-gradient(180deg, var(--brand), var(--brand-2));
+  color: white; font-weight: 600; font-size: 12px;
+  letter-spacing: -0.03em;
+  box-shadow: inset 0 1px 0 oklch(100% 0 0 / 0.25), 0 2px 6px oklch(54% 0.19 254 / 0.22);
+}
+.ws-switch {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 8px 5px 10px;
+  border-radius: 7px;
+  font-size: 13px; font-weight: 500; color: var(--ink);
+  border: 1px solid transparent;
+  background: transparent;
+}
+.ws-switch:hover { background: var(--bg-2); border-color: var(--line); }
+.ws-switch .ico-xs { color: var(--ink-4); }
+
+/* Primary nav strip (segmented) */
+.main-nav {
+  display: flex; align-items: center; gap: 1px;
+  padding: 3px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+.main-nav a {
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--ink-3);
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  transition: background .15s, color .15s;
+}
+.main-nav a:hover { color: var(--ink); }
+.main-nav a.active {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 1px 0 oklch(0% 0 0 / 0.04), 0 1px 2px oklch(0% 0 0 / 0.05);
+}
+
+/* Crumb path now lives at the top of the page */
+.page > .crumbs {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--ink-3);
+  padding: 0;
+  margin-bottom: 20px;
+}
+.page > .crumbs a { color: var(--ink-3); }
+.page > .crumbs a:hover { color: var(--ink); }
+.page > .crumbs .here { color: var(--ink); font-weight: 500; }
+.page > .crumbs .sep { color: var(--ink-4); }
+
+/* User chip in the top bar */
+.user-chip {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: linear-gradient(135deg, oklch(72% 0.12 254), oklch(58% 0.18 254));
+  color: white; display: grid; place-items: center;
+  font-size: 11px; font-weight: 600;
+  border: 2px solid var(--surface);
+}
+
+/* =========================================================================
+   UNIFIED BUTTON SYSTEM
+   One primary (brand cobalt), one secondary (white-raised), one ghost.
+   ========================================================================= */
+.btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 7px 13px;
+  border-radius: 8px;
+  font-size: 13px; font-weight: 500;
+  letter-spacing: -0.005em;
+  border: 1px solid oklch(87% 0.012 254);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 1px 0 oklch(0% 0 0 / 0.025), 0 1px 2px oklch(20% 0 0 / 0.04);
+  transition: background .15s, border-color .15s, transform .12s, box-shadow .15s, filter .15s;
+}
+.btn:hover {
+  border-color: oklch(78% 0.015 254);
+  background: var(--surface);
+  box-shadow: 0 1px 0 oklch(0% 0 0 / 0.04), 0 2px 4px oklch(20% 0 0 / 0.05);
+}
+.btn:active { transform: translateY(0.5px); box-shadow: 0 1px 0 oklch(0% 0 0 / 0.04); }
+
+.btn.primary,
+.btn.brand {
+  background: linear-gradient(180deg, var(--brand), var(--brand-2)) !important;
+  color: white !important;
+  border: 1px solid var(--brand-2) !important;
+  box-shadow:
+    inset 0 1px 0 oklch(100% 0 0 / 0.18),
+    0 1px 0 oklch(0% 0 0 / 0.06),
+    0 4px 12px oklch(54% 0.19 254 / 0.20) !important;
+}
+.btn.primary:hover,
+.btn.brand:hover {
+  filter: brightness(1.05);
+  border-color: var(--brand-2) !important;
+}
+
+.btn.ghost {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: var(--ink-3) !important;
+  box-shadow: none !important;
+}
+.btn.ghost:hover {
+  background: var(--bg-2) !important;
+  color: var(--ink) !important;
+}
+
+.btn:disabled, .btn[disabled] { opacity: 0.45; cursor: not-allowed; }
+
+/* Icon-button consistency */
+.icon-btn {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink-3);
+  box-shadow: none;
+}
+.icon-btn:hover { background: var(--bg-2); color: var(--ink); border-color: var(--line); }
+
+/* Segmented control "on" state — no more dark ink chip */
+.seg {
+  background: var(--bg-2);
+}
+.seg button.on {
+  background: var(--surface) !important;
+  color: var(--ink) !important;
+  box-shadow: 0 1px 0 oklch(0% 0 0 / 0.04), 0 1px 2px oklch(0% 0 0 / 0.06);
+}
+
+/* =========================================================================
+   UNSAVED indicator — elegant italic text, not a chip with a dot
+   ========================================================================= */
+.unsaved-indicator {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 14px;
+  color: var(--peach-ink);
+  letter-spacing: -0.01em;
+}
+
+/* Row-key — drop decorative leading SVGs (the minus-circle / square outlines) */
+.row-key > svg.ico-xs:first-child { display: none; }
+.row-key { background: var(--bg-2); padding: 10px 12px; }
+
+/* Cleaner delta chip — no awkward rotated up-arrow on "+ N new" patterns */
+.delta.no-icon svg { display: none; }
+.delta.plus { color: var(--mint-ink); background: var(--mint-soft); border-color: var(--mint-line); }
+.delta.peach-plus { color: var(--peach-ink); background: var(--peach-soft); border-color: var(--peach-line); }
+
+/* Page meta button-group spacing */
+.page-meta { gap: 8px; }
+.page-meta .btn { padding: 7px 12px; }
+
+/* =========================================================================
+   OVERRIDE v4 — definitive cleanup
+   - Truly kill the flow-nav
+   - Page rhythm + spacing system
+   - Button vs status-tag distinction
+   - Cleaner score / impact / checklist cards
+   ========================================================================= */
+
+/* Definitively remove flow-nav (some browsers ignore display:none in cached CSS) */
+.flow-nav,
+nav.flow-nav,
+.flow-nav * {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  width: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  position: absolute !important;
+  left: -9999px !important;
+}
+
+/* Spacing rhythm — compact, dashboard-first */
+.page { padding-top: 18px !important; padding-bottom: 60px !important; }
+.page > .crumbs { margin-bottom: 10px; font-size: 12px; }
+.page-head {
+  padding-bottom: 16px !important;
+  margin-bottom: 18px !important;
+  border-bottom: 1px solid var(--line);
+  align-items: center !important;
+}
+.page-title {
+  margin: 0 0 4px !important;
+  font-size: clamp(20px, 1.5vw, 24px) !important;
+  letter-spacing: -0.02em !important;
+  line-height: 1.2 !important;
+  font-weight: 500 !important;
+}
+/* Highlight an emphasised word with COLOUR ONLY — same font, same weight.
+   This applies on every page so the highlight pattern is consistent. */
+.page-title em,
+.page-title strong,
+.intro h1 em,
+.serif-em {
+  font-family: inherit !important;
+  font-style: normal !important;
+  font-weight: 500 !important;
+  color: var(--brand) !important;
+  letter-spacing: inherit !important;
+}
+.unsaved-indicator {
+  font-family: 'Geist', sans-serif !important;
+  font-style: normal !important;
+  font-weight: 500 !important;
+  font-size: 13px !important;
+  color: var(--brand-2) !important;
+}
+.page-sub { max-width: 70ch; font-size: 13px; margin: 0; color: var(--ink-3); }
+.page-eyebrow { margin-bottom: 6px; font-size: 12px; }
+
+/* =========================================================================
+   STATUS TAG vs BUTTON — clear visual distinction
+   Tags are flat with no border, no shadow. Buttons are raised with border.
+   ========================================================================= */
+.tag {
+  display: inline-flex; align-items: center;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  border-radius: 4px;
+  background: var(--bg-2);
+  color: var(--ink-3);
+  border: 0;
+  box-shadow: none;
+  white-space: nowrap;
+}
+.tag.mint { background: var(--mint-soft); color: var(--mint-ink); }
+.tag.brand { background: var(--brand-soft); color: var(--brand-2); }
+.tag.peach { background: var(--peach-soft); color: var(--peach-ink); }
+.tag.coral { background: var(--coral-soft); color: var(--coral-ink); }
+.tag.ghost { background: transparent; color: var(--ink-4); }
+
+/* status-pill is now an alias for .tag but pill-shaped (kept for back-compat) */
+.status-pill {
+  display: inline-flex; align-items: center;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+.status-pill.in-progress { background: var(--brand-soft); color: var(--brand-2); }
+.status-pill.done { background: var(--mint-soft); color: var(--mint-ink); }
+.status-pill.warn { background: var(--peach-soft); color: var(--peach-ink); }
+.status-pill.danger { background: var(--coral-soft); color: var(--coral-ink); }
+.status-pill.queued { background: var(--bg-2); color: var(--ink-3); }
+
+/* =========================================================================
+   IMPACT / NUMBER LIST — cleaner, no centered dots
+   ========================================================================= */
+.impact-row {
+  display: grid !important;
+  grid-template-columns: 1fr auto !important;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line-2);
+  font-size: 13px;
+}
+.impact-row:last-child { border-bottom: 0; }
+.impact-row .left { display: inline-flex; align-items: center; gap: 10px; color: var(--ink-2); }
+.impact-row .left .pill { width: fit-content; }
+.impact-row .num,
+.impact-row .right {
+  font-family: "Geist Mono", monospace;
+  font-size: 13px;
+  color: var(--ink);
+  text-align: right;
+}
+.impact-row .num.pos { color: var(--mint-ink); }
+.impact-row .num.neg { color: var(--coral-ink); }
+
+/* =========================================================================
+   SEGMENTED BAR (replaces the noisy donut for "Rules used")
+   ========================================================================= */
+.seg-bar {
+  display: flex;
+  height: 14px;
+  border-radius: 7px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+}
+.seg-bar > span {
+  display: block;
+  height: 100%;
+  border-right: 1px solid oklch(100% 0 0 / 0.7);
+}
+.seg-bar > span:last-child { border-right: 0; }
+.seg-bar > span.markup-7 { background: oklch(74% 0.13 254); }
+.seg-bar > span.markup-5 { background: oklch(78% 0.10 220); }
+.seg-bar > span.at-cost { background: oklch(80% 0.012 254); }
+.seg-bar > span.exclude { background: oklch(75% 0.13 25); }
+.seg-bar > span.ignore { background: oklch(88% 0.005 254); }
+
+/* =========================================================================
+   CHECKLIST (Before you post)
+   - Each row has: indicator + content + action OR status tag
+   - Clear distinction so user knows what's clickable
+   ========================================================================= */
+.checklist { display: flex; flex-direction: column; }
+.checklist-row {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line-2);
+}
+.checklist-row:last-child { border-bottom: 0; }
+.checklist-row .mark {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--bg-2);
+  color: var(--ink-3);
+  font-family: 'Geist Mono', monospace;
+  font-size: 11px;
+  border: 1px solid var(--line);
+  margin: 0 auto;
+}
+.checklist-row .mark.done {
+  background: var(--mint);
+  color: white;
+  border: 1px solid var(--mint);
+}
+.checklist-row .mark.active {
+  background: var(--brand);
+  color: white;
+  border: 1px solid var(--brand);
+}
+.checklist-row .body { font-size: 13px; }
+.checklist-row .body .ttl { color: var(--ink); font-weight: 500; }
+.checklist-row .body .meta { color: var(--ink-3); font-size: 12px; margin-top: 2px; }
+
+/* Right slot can be either a tag (no border) or a button (raised) — never both */
+.checklist-row .slot-tag {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  font-family: 'Geist Mono', monospace;
+}
+.checklist-row .slot-tag.done { color: var(--mint-ink); }
+.checklist-row .slot-tag.active { color: var(--brand); }
+
+/* =========================================================================
+   NEXT ACTIONS — cleaner icon treatment
+   Soft neutral icon container, brand accent for hover only
+   ========================================================================= */
+.next-action .ico-wrap,
+.next-action > div[class*="ico-wrap"] {
+  background: var(--bg-2) !important;
+  color: var(--ink-2) !important;
+  border: 1px solid var(--line-2);
+  border-radius: 7px !important;
+}
+.next-action:hover .ico-wrap { color: var(--brand) !important; }
+
+/* =========================================================================
+   ESTIMATED ADJUSTMENT IMPACT — clean numeric table, no colored signs
+   ========================================================================= */
+.impact-table {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0 24px;
+  font-size: 13px;
+  margin-top: 16px;
+}
+.impact-table > .label { padding: 10px 0; color: var(--ink-2); border-bottom: 1px solid var(--line-2); }
+.impact-table > .val {
+  padding: 10px 0; text-align: right; color: var(--ink);
+  font-family: 'Geist Mono', monospace;
+  border-bottom: 1px solid var(--line-2);
+}
+.impact-table > div:nth-last-child(-n+2) { border-bottom: 0; padding-bottom: 4px; }
+.impact-table .val.pos { color: var(--mint-ink); }
+.impact-table .val.neg { color: var(--coral-ink); }
+
+/* =========================================================================
+   RULES USAGE CARD — refined layout
+   ========================================================================= */
+.rules-usage {
+  display: flex; flex-direction: column; gap: 14px;
+  padding: 18px;
+}
+.rules-usage .total {
+  display: flex; align-items: baseline; gap: 10px;
+  font-family: "Geist Mono", monospace;
+  font-size: 13px; color: var(--ink-3);
+}
+.rules-usage .total b {
+  font-family: "Geist", sans-serif;
+  font-size: 36px; font-weight: 400;
+  color: var(--ink); letter-spacing: -0.03em;
+}
+
+/* Compact rules list with inline mini bars */
+.rule-list { display: flex; flex-direction: column; gap: 4px; }
+.rule-row {
+  display: grid;
+  grid-template-columns: 92px 1fr 62px 42px;
+  gap: 14px;
+  align-items: center;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line-2);
+}
+.rule-row:last-child { border-bottom: 0; }
+.rule-bar {
+  height: 6px;
+  background: var(--bg-2);
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid var(--line-2);
+  box-shadow: inset 0 1px 1px oklch(20% 0 0 / 0.04);
+}
+.rule-fill { height: 100%; border-radius: 3px; }
+.rule-meta {
+  font-size: 12px;
+  color: var(--ink-3);
+  font-family: 'Geist Mono', monospace;
+}
+.rule-meta b { color: var(--ink); font-weight: 500; }
+.rule-pct {
+  font-family: 'Geist Mono', monospace;
+  font-size: 12px;
+  color: var(--ink);
+  text-align: right;
+}
+
+/* =========================================================================
+   SCORE CARD — refined number presentation
+   ========================================================================= */
+.score-card { padding: 18px 20px 16px; }
+.score-card .v {
+  font-weight: 400;
+  font-size: clamp(32px, 3.2vw, 44px);
+  margin-top: 6px;
+}
+.score-card .v .unit {
+  font-size: 0.4em;
+  font-family: "Geist", sans-serif;
+  color: var(--ink-3);
+}
+.score-card .delta {
+  font-family: "Geist Mono", monospace;
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 0;
+  margin-left: 8px;
+  background: var(--mint-soft);
+  color: var(--mint-ink);
+  letter-spacing: 0;
+}
+.score-card .delta.down { background: var(--coral-soft); color: var(--coral-ink); }
+.score-card .delta svg { display: none; }  /* unify on text deltas — no rotated arrows */
+
+/* =========================================================================
+   GENERIC SPACING + RHYTHM
+   ========================================================================= */
+.card-head { padding: 14px 18px; }
+.card-head .card-title { font-size: 13px; font-weight: 500; }
+.card-head .num-badge {
+  font-family: "Geist Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  background: var(--bg-2);
+  color: var(--ink-3);
+  border: 0;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.page-eyebrow { margin-bottom: 14px; }
+.toolbar { padding: 14px 0; gap: 8px; }
+.matrix-meta { padding: 12px 16px; }
+
+/* =========================================================================
+   PRIMARY (LEFT) NAVIGATION — dashboard-level, between Arkk modules.
+   Top bar carries the current module's sub-nav.
+   ========================================================================= */
+.sidebar {
+  position: sticky; top: 0;
+  height: 100vh;
+  padding: 12px 10px 8px;
+  background: oklch(99.2% 0.005 88 / 0.75);
+  backdrop-filter: saturate(140%) blur(14px);
+  -webkit-backdrop-filter: saturate(140%) blur(14px);
+  border-right: 1px solid var(--line);
+  display: flex; flex-direction: column;
+  overflow-y: auto;
+  z-index: 25;
+}
+
+.sidebar-head {
+  display: flex; align-items: center; gap: 9px;
+  padding: 4px 4px 14px;
+}
+.sidebar-head .logo {
+  width: 28px; height: 28px; border-radius: 7px;
+  background: linear-gradient(180deg, var(--brand), var(--brand-2));
+  color: white; display: grid; place-items: center;
+  font-weight: 600; font-size: 12px; letter-spacing: -0.03em;
+  box-shadow: inset 0 1px 0 oklch(100% 0 0 / 0.22), 0 2px 6px oklch(54% 0.19 254 / 0.22);
+  flex-shrink: 0;
+}
+.sidebar-head .ws-switch {
+  flex: 1;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 8px;
+  border-radius: 7px;
+  font-size: 13px; font-weight: 500; color: var(--ink);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  text-align: left;
+  letter-spacing: -0.005em;
+}
+.sidebar-head .ws-switch:hover { background: var(--bg-3); }
+.sidebar-head .ws-switch .ico-xs { color: var(--ink-4); }
+
+.sidebar-section { margin-bottom: 1px; }
+.sidebar-section .heading {
+  font-family: 'Geist Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-4);
+  padding: 12px 10px 4px;
+}
+
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 10px;
+  border-radius: 7px;
+  font-size: 13px;
+  color: var(--ink-2);
+  font-weight: 400;
+  letter-spacing: -0.005em;
+  transition: background .14s, color .14s;
+  cursor: pointer;
+}
+.nav-item:hover { background: var(--bg-2); color: var(--ink); }
+.nav-item.active {
+  background: var(--brand-soft);
+  color: var(--brand-2);
+  font-weight: 500;
+}
+.nav-item .ico-sm {
+  color: var(--ink-3);
+  flex-shrink: 0;
+  width: 16px; height: 16px;
+}
+.nav-item.active .ico-sm { color: var(--brand); }
+.nav-item .count {
+  margin-left: auto;
+  font-family: 'Geist Mono', monospace;
+  font-size: 10px;
+  color: var(--ink-4);
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: transparent;
+  border: 1px solid var(--line-2);
+}
+.nav-item.active .count {
+  background: var(--surface);
+  color: var(--brand);
+  border-color: var(--brand-line);
+}
+
+.sidebar-foot {
+  margin-top: auto;
+  padding: 12px 8px 4px;
+  border-top: 1px solid var(--line-2);
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px;
+}
+.sidebar-foot .user-chip { width: 30px; height: 30px; flex-shrink: 0; }
+.sidebar-foot .nm { color: var(--ink); font-weight: 500; font-size: 13px; line-height: 1.2; }
+.sidebar-foot .rl { color: var(--ink-3); font-size: 11px; }
+.sidebar-foot .more {
+  margin-left: auto;
+  padding: 6px;
+  border-radius: 6px;
+  color: var(--ink-4);
+  display: inline-grid;
+  place-items: center;
+}
+.sidebar-foot .more:hover { background: var(--bg-2); color: var(--ink); }
+
+/* =========================================================================
+   TOPBAR — module sub-nav only (brand/workspace/user now live in sidebar)
+   ========================================================================= */
+.topbar {
+  grid-template-columns: auto 1fr auto !important;
+}
+.topbar .brand-block { display: none !important; }
+.topbar .top-actions .user-chip { display: none !important; }
+
+/* Module label before sub-nav in topbar (gives context) */
+.module-tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 9px;
+  border-radius: 6px;
+  background: var(--bg-2);
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--line);
+}
+.module-tag .ico-xs { color: var(--brand); }
+
+/* =========================================================================
+   OVERRIDE v5 — replace peach (warning/orange) with brand cobalt
+   The unmapped/exceptions cards stand out on their own with the soft-brand
+   gradient; warning meaning carries through type weight + icon, not hue.
+   ========================================================================= */
+.unsaved-indicator { color: var(--brand-2) !important; }
+
+/* Score cards that used the peach palette — redirect to brand */
+.score-card[style*="--peach-line"],
+.score-card[style*="--peach-soft"],
+.score-card[style*="--peach-ink"] {
+  /* Inline styles already set, this is just a hint;
+     actual swap happens via per-file HTML edits below. */
+}
+
+/* Any orphan peach-soft / peach-ink content uses brand instead */
+[style*="var(--peach-ink)"] { color: var(--brand-2) !important; }
+[style*="var(--peach-soft)"] { background-color: oklch(96% 0.03 254) !important; }
+[style*="var(--peach-line)"] { border-color: var(--brand-line) !important; }
+
+/* Linear gradient swap — was `peach-soft → surface`, now brand-soft → surface */
+.score-card[style*="linear-gradient(180deg, var(--peach-soft)"] {
+  background: linear-gradient(180deg, var(--brand-soft), var(--surface)) !important;
+  border-color: var(--brand-line) !important;
+}
+
+/* =========================================================================
+   OVERRIDE v6 - INTERACTION LAYER (additive; entrances + micro-interactions)
+   Nothing above this block is edited. This section only adds motion tokens,
+   entrance/press/commit primitives, and reduced-motion handling used by
+   arkk.js across all screens (existing + new).
+   ========================================================================= */
+:root {
+  --ease-house: cubic-bezier(0.33, 1, 0.68, 1);   /* house ease for authored motion */
+  --ease-spring: linear(0,0.006,0.025 2.8%,0.101 6.1%,0.539 18.9%,0.721,0.849,0.937,0.991,
+    1.021 34%,1.035 45.5%,1.036,1.03,1.001 63%,0.995,0.992,0.993,1.001 84.4%,1.002,1); /* affirmative-commit settle */
+  --dur-micro: 140ms;   /* hover/press acknowledgment */
+  --dur-ui: 260ms;      /* in-view UI transitions, <=300ms */
+  --dur-enter: 560ms;   /* entrance, <=700ms */
+}
+
+/* Entrance primitive - elements start hidden, JS adds .in to reveal */
+[data-reveal] { opacity: 0; transform: translateY(10px); }
+[data-reveal].in {
+  opacity: 1; transform: none;
+  transition: opacity var(--dur-enter) var(--ease-house),
+              transform var(--dur-enter) var(--ease-house);
+}
+
+/* Affirmative commit pop - JS adds .committed for one cycle on Save/Commit/Resolve/Assign */
+@keyframes commit-pop { from { transform: scale(1); } 40% { transform: scale(1.035); } to { transform: scale(1); } }
+.btn.committed { animation: commit-pop 300ms var(--ease-spring); }
+
+/* Press acknowledgment - instant, on every .btn (extends existing :active translate) */
+.btn:active { transform: translateY(0.5px) scale(0.985); transition: transform var(--dur-micro) var(--ease-house); }
+
+/* Count-up numerals hold layout while animating (tabular figures already set on .mono/.v) */
+[data-count] { font-variant-numeric: tabular-nums; }
+
+/* Micro-lift for hover on cards/rows that opt in - soft-fill/lift only, never a stroke */
+[data-lift]:hover { transform: translateY(-1px); transition: transform var(--dur-ui) var(--ease-house); }
+
+/* Row exit used when an item leaves a queue (resolve/drain) */
+[data-exit] {
+  transition: opacity var(--dur-ui) var(--ease-house),
+              transform var(--dur-ui) var(--ease-house),
+              max-height var(--dur-ui) var(--ease-house),
+              margin var(--dur-ui) var(--ease-house),
+              padding var(--dur-ui) var(--ease-house);
+  overflow: hidden;
+}
+[data-exit].leaving {
+  opacity: 0;
+  transform: translateX(-16px);
+  max-height: 0 !important;
+  margin: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  border-width: 0 !important;
+}
+
+/* Crossfade helper for panels that re-populate in place (e.g. exception drawer) */
+[data-crossfade] { transition: opacity var(--dur-ui) var(--ease-house); }
+[data-crossfade].fade-out { opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal], [data-reveal].in { opacity: 1 !important; transform: none !important; transition: none !important; }
+  .btn.committed { animation: none !important; }
+  [data-exit].leaving { display: none !important; }
+  *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}

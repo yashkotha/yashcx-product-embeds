@@ -1,0 +1,1331 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<script>try{if(localStorage.getItem('arkk.nav.collapsed')==='1')document.documentElement.dataset.navCollapsed='1';}catch(e){}</script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Runs &amp; journals | Arkk Transfer Pricing</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  /* Chrome reconciliation: left sidebar is the ONE navigation; the topbar
+     segmented tab strip duplicated it and is removed. Collapse the topbar
+     grid from 3 tracks (nav | search | actions) to 2 (search | actions)
+     without touching shared.css (LAW, never edited). */
+  .topbar { grid-template-columns: 1fr auto !important; }
+</style>
+<link rel="stylesheet" href="arkk-nav.css" />
+<script defer src="arkk-data.js"></script>
+<script defer src="arkk.js"></script>
+<script defer src="arkk-nav.js"></script>
+<script defer src="arkk-chrome.js"></script>
+<style>
+  .hero {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 16px;
+    margin-bottom: 22px;
+  }
+  .hero-card {
+    background: linear-gradient(180deg, oklch(100% 0 0 / 0.7), oklch(100% 0 0 / 0.4));
+    backdrop-filter: saturate(160%) blur(24px);
+    -webkit-backdrop-filter: saturate(160%) blur(24px);
+    border: 1px solid oklch(100% 0 0 / 0.7);
+    border-radius: 18px;
+    padding: 22px 24px;
+    position: relative;
+    overflow: hidden;
+    box-shadow:
+      inset 0 1px 0 oklch(100% 0 0 / 0.5),
+      0 10px 30px oklch(54% 0.19 254 / 0.05),
+      0 1px 2px oklch(20% 0.02 254 / 0.03);
+  }
+  /* No edge-stroke highlights — use a soft radial glow instead */
+  .hero-card.live::before {
+    content: ""; position: absolute; right: -100px; top: -100px;
+    width: 320px; height: 320px; border-radius: 50%;
+    background: radial-gradient(closest-side, oklch(94% 0.06 254 / 0.5), transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .hero-card > * { position: relative; z-index: 1; }
+  .hero-card .lab {
+    font-family: "Geist Mono", monospace; font-size: 10px;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3);
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .hero-card .lab .live-label {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 3px;
+    background: var(--mint-soft);
+    color: var(--mint-ink);
+    font-family: 'Geist Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 600;
+    animation: live-flash 2.4s ease-in-out infinite;
+  }
+  @keyframes live-flash {
+    0%, 100% { background: var(--mint-soft); }
+    50%      { background: oklch(88% 0.10 162); }
+  }
+  .hero-card .v-big {
+    font-family: "Geist", sans-serif;
+    font-size: clamp(40px, 4.2vw, 56px);
+    line-height: 1;
+    letter-spacing: -0.04em;
+    font-weight: 500;
+    color: var(--ink);
+    margin-top: 10px;
+    display: flex; align-items: baseline; gap: 10px;
+    font-feature-settings: "tnum";
+  }
+  .hero-card .v-big em {
+    font-family: inherit;
+    font-style: normal;
+    font-weight: 500;
+    color: var(--brand);
+  }
+  .hero-card .v-big .unit { font-size: 0.42em; color: var(--ink-3); font-weight: 400; letter-spacing: -0.02em; }
+  .hero-card .sub { margin-top: 8px; color: var(--ink-3); font-size: 13px; max-width: 60ch; }
+
+  .live-progress {
+    margin-top: 18px;
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .live-progress .lp-head {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 12px; color: var(--ink-3);
+    margin-bottom: 8px;
+  }
+  .live-progress .lp-bar {
+    height: 8px; background: var(--bg-2); border-radius: 6px; overflow: hidden;
+    position: relative;
+  }
+  .live-progress .lp-fill {
+    height: 100%; width: 72%;
+    background: linear-gradient(90deg, var(--brand), var(--brand-2));
+    border-radius: 6px;
+    position: relative;
+    overflow: hidden;
+  }
+  .live-progress .lp-fill::after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, oklch(100% 0 0 / 0.4), transparent);
+    transform: translateX(-100%);
+    animation: shimmer 1.6s ease-in-out infinite;
+  }
+  @keyframes shimmer { to { transform: translateX(100%); } }
+
+  .lp-steps {
+    display: flex; justify-content: space-between;
+    margin-top: 14px;
+    font-family: "Geist Mono", monospace; font-size: 11px;
+    color: var(--ink-3);
+  }
+  .lp-step { display: inline-flex; align-items: center; gap: 6px; }
+  .lp-step.done { color: var(--mint-ink); }
+  .lp-step.active { color: var(--brand); font-weight: 500; }
+  .lp-step .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-4); }
+  .lp-step.done .dot { background: var(--mint); }
+  .lp-step.active .dot { background: var(--brand); box-shadow: 0 0 0 4px oklch(54% 0.19 254 / 0.18); }
+
+  .strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 22px; }
+
+  /* =====================================================================
+     Insight cards — replaces vanity metrics with value-dense panels
+     ===================================================================== */
+  .insight-row {
+    display: grid;
+    grid-template-columns: 1.25fr 1fr 1fr;
+    gap: 14px;
+    margin: 22px 0;
+  }
+  .insight-card {
+    background: linear-gradient(180deg, oklch(100% 0 0 / 0.7), oklch(100% 0 0 / 0.4));
+    backdrop-filter: saturate(160%) blur(20px);
+    -webkit-backdrop-filter: saturate(160%) blur(20px);
+    border: 1px solid oklch(100% 0 0 / 0.6);
+    border-radius: 16px;
+    padding: 16px 18px 14px;
+    box-shadow:
+      inset 0 1px 0 oklch(100% 0 0 / 0.5),
+      0 8px 24px oklch(54% 0.19 254 / 0.04);
+    display: flex; flex-direction: column;
+    gap: 12px;
+  }
+  .insight-head {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 12px;
+  }
+  .insight-title {
+    font-size: 13px; font-weight: 500;
+    color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  .insight-sub {
+    font-size: 11px; color: var(--ink-3);
+    margin-top: 2px;
+  }
+  .insight-meta {
+    font-family: 'Geist Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    background: var(--bg-2);
+    padding: 2px 7px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+  .insight-meta.pos {
+    color: var(--mint-ink);
+    background: var(--mint-soft);
+  }
+  .insight-link {
+    font-size: 12px;
+    color: var(--brand);
+    margin-top: 2px;
+  }
+  .insight-link:hover { text-decoration: underline; }
+
+  /* Contributor list */
+  .contrib-list { display: flex; flex-direction: column; }
+  .contrib-row {
+    display: grid;
+    grid-template-columns: 14px 1fr 60px;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--line-2);
+  }
+  .contrib-row:last-child { border-bottom: 0; }
+  .contrib-row .rk {
+    font-family: 'Geist Mono', monospace;
+    font-size: 11px; color: var(--ink-4);
+  }
+  .contrib-row .nm {
+    display: flex; flex-direction: column; gap: 4px;
+    min-width: 0;
+  }
+  .contrib-row .nm .label {
+    font-size: 12px; color: var(--ink);
+    font-weight: 500;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .contrib-row .nm .bar {
+    height: 4px; background: var(--bg-2);
+    border-radius: 2px;
+    overflow: hidden;
+    border: 1px solid var(--line-2);
+  }
+  .contrib-row .nm .bar > div {
+    height: 100%; border-radius: 2px;
+  }
+  .contrib-row .amt {
+    text-align: right;
+    font-family: 'Geist Mono', monospace;
+    font-size: 12px;
+    color: var(--ink);
+    line-height: 1.2;
+    font-weight: 500;
+  }
+  .contrib-row .amt .pct {
+    font-size: 10px; color: var(--ink-3);
+    font-weight: 400;
+  }
+
+  /* Check rows */
+  .check-list { display: flex; flex-direction: column; }
+  .check-row {
+    display: grid;
+    grid-template-columns: 20px 1fr auto;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--line-2);
+    font-size: 12px;
+  }
+  .check-row:last-child { border-bottom: 0; }
+  .check-row .ind {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    flex-shrink: 0;
+  }
+  .check-row .ind.pass { background: var(--mint); color: white; }
+  .check-row .ind.live {
+    background: var(--brand); color: white;
+    animation: live-flash 2.4s ease-in-out infinite;
+  }
+  .check-row .ind.pending {
+    background: transparent; color: var(--ink-4);
+    border: 1px solid var(--line);
+  }
+  .check-row .body { color: var(--ink-2); }
+  .check-row .body b {
+    color: var(--ink); font-weight: 500;
+    font-size: 12px;
+  }
+  .check-row .res {
+    font-family: 'Geist Mono', monospace;
+    font-size: 11px; color: var(--ink-3);
+    white-space: nowrap;
+  }
+
+  /* Attribution rows */
+  .attr-list { display: flex; flex-direction: column; }
+  .attr-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--line-2);
+    font-size: 12px;
+  }
+  .attr-row:last-child { border-bottom: 0; }
+  .attr-row .lbl {
+    color: var(--ink);
+    font-weight: 500;
+    font-size: 12px;
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .attr-row .lbl .desc {
+    color: var(--ink-3); font-size: 11px;
+    font-weight: 400;
+  }
+  .attr-row .amt {
+    text-align: right;
+    font-family: 'Geist Mono', monospace;
+    color: var(--mint-ink);
+    font-size: 13px; font-weight: 500;
+  }
+  .attr-row .amt.neg { color: var(--coral-ink); }
+
+  .journals {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md);
+    overflow: hidden;
+  }
+  .journals .j-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, var(--bg-3), var(--surface));
+  }
+  table.journals-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+  table.journals-table th {
+    font-weight: 500; text-align: left; color: var(--ink-3); font-size: 11px;
+    letter-spacing: 0.05em; text-transform: uppercase;
+    padding: 10px 12px;
+    background: var(--bg-2);
+    border-bottom: 1px solid var(--line);
+    /* QA fix: "Rule applied" was the one two-word header without room to
+       spare, wrapping to a 2nd line that pressed against the row below. */
+    white-space: nowrap;
+  }
+  /* QA fix (cont.): making Base/Markup/DR-CR/View nowrap (below) is only
+     safe if the row's total min-width still fits the card - trimming the
+     cell gutter from 18px to 12px buys back the room those fixes need so
+     the table doesn't overrun .journals's overflow:hidden edge and clip
+     the last column. */
+  table.journals-table td {
+    padding: 14px 12px;
+    border-bottom: 1px solid var(--line-2);
+    color: var(--ink-2);
+    vertical-align: middle;
+  }
+  table.journals-table tr:last-child td { border-bottom: 0; }
+  table.journals-table tr:hover td { background: var(--bg-3); }
+  table.journals-table .ent-cell { display: flex; align-items: center; gap: 10px; color: var(--ink); font-weight: 500; }
+  /* QA fix: fixing the currency columns above (nowrap) left the trailing
+     "View ↗" action column as the only shrinkable one, so the auto table
+     layout squeezed it until "View" itself broke mid-word ("Vie"/"w"). It
+     never needs to wrap. */
+  table.journals-table td:last-child { white-space: nowrap; }
+  /* QA fix: Base/Markup/DR-CR values ("£ 14.20m") were shattering across 2
+     lines (the £ sign alone, then the figure) once the column narrowed -
+     nowrap keeps every figure on one unbroken line. */
+  table.journals-table .num { font-family: "Geist Mono", monospace; text-align: right; color: var(--ink); white-space: nowrap; }
+  table.journals-table .num.pos { color: var(--mint-ink); }
+  table.journals-table .num.neg { color: var(--coral-ink); }
+
+  .grid-2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 18px; margin-top: 18px; }
+
+  /* Compact run history list */
+  .run-history { display: flex; flex-direction: column; gap: 0; }
+  .run-row {
+    display: grid;
+    grid-template-columns: 56px 1fr 120px auto;
+    gap: 16px;
+    align-items: center;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--line-2);
+    transition: background .12s;
+  }
+  .run-row:hover { background: var(--bg-3); }
+  .run-row:last-child { border-bottom: 0; }
+  .run-row .ts {
+    font-family: "Geist Mono", monospace;
+    font-size: 11px; color: var(--ink-3);
+    text-align: center; line-height: 1.3;
+  }
+  .run-row .ts b { color: var(--ink); font-size: 13px; font-family: "Geist", sans-serif; font-weight: 500; display: block; letter-spacing: -0.01em; }
+  .run-row .title { display: flex; flex-direction: column; gap: 4px; }
+  .run-row .title .nm { color: var(--ink); font-weight: 500; font-size: 13px; }
+  .run-row .title .meta { color: var(--ink-3); font-size: 12px; display: flex; align-items: center; gap: 8px; }
+  .run-row .val {
+    font-family: "Geist Mono", monospace; text-align: right;
+    color: var(--ink); font-size: 13px;
+  }
+
+  /* Interaction-layer additions (v6) */
+  .check-row .ind { transition: background .15s, color .15s; }
+
+  /* Page-local secondary-action treatment: paired secondary actions
+     (Cancel / Back / Reset) must read as buttons, not bare text.
+     Neutral low-alpha ink fill, standard hairline, same geometry as the
+     adjacent primary. Hover deepens the fill. */
+  .btn.soft {
+    background: oklch(18% 0.014 254 / 0.05);
+    border-color: var(--line);
+    color: var(--ink-2);
+    box-shadow: none;
+  }
+  .btn.soft:hover {
+    background: oklch(18% 0.014 254 / 0.09);
+    border-color: oklch(87% 0.012 254);
+    color: var(--ink);
+  }
+  .btn.soft:focus-visible {
+    outline: 2px solid oklch(54% 0.19 254 / 0.3);
+    outline-offset: 1px;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Primary (dashboard) navigation -->
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <div class="logo">fs</div>
+      <button class="ws-switch">
+        Northgate
+        <svg class="ico-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l5 5 5-5"/></svg>
+      </button>
+    </div>
+    <div class="sidebar-section">
+      <a class="nav-item" href="./">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 9.5V21h5v-7h4v7h5V9.5"/></svg>
+        <span class="nav-label">Dashboard</span>
+      </a>
+      <a class="nav-item" href="#" data-focus-search>
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <span class="nav-label">Search</span>
+        <span class="count">⌘K</span>
+      </a>
+      <a class="nav-item" href="#" data-quiet="Inbox">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l3-9h12l3 9v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1zM3 13h6l1 3h4l1-3h6"/></svg>
+        <span class="nav-label">Inbox</span>
+        <span class="count">3</span>
+      </a>
+    </div>
+    <div class="sidebar-section">
+      <div class="heading">Workspace</div>
+      <a class="nav-item" href="./">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 9.5V21h5v-7h4v7h5V9.5"/></svg>
+        <span class="nav-label">Overview</span>
+      </a>
+      <a class="nav-item" href="matrix.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h6v6H4zM14 6h6v6h-6zM4 16h6v4H4zM14 16h6v4h-6z"/></svg>
+        <span class="nav-label">Cost matrix</span>
+      </a>
+      <a class="nav-item" href="transfer-pricing.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h14M14 5l3 3-3 3M21 16H7M10 19l-3-3 3-3"/></svg>
+        <span class="nav-label">Benchmarking</span>
+      </a>
+      <a class="nav-item" href="hierarchy.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="6" rx="1.3"/><rect x="3" y="15" width="6" height="6" rx="1.3"/><rect x="15" y="15" width="6" height="6" rx="1.3"/><path d="M12 9v3M6 15v-3h12v3"/></svg>
+        <span class="nav-label">Hierarchy</span>
+      </a>
+      <a class="nav-item active" href="runs.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M10.2 8.7l5.4 3.3-5.4 3.3z"/></svg>
+        <span class="nav-label">Runs</span>
+      </a>
+      <a class="nav-item" href="workflows.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h6m0 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM5 17h6m0 0a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM5 7v10"/></svg>
+        <span class="nav-label">Workflows</span>
+      </a>
+    </div>
+    <div class="sidebar-section">
+      <div class="heading">Data &amp; admin</div>
+      <a class="nav-item" href="data-sources.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>
+        <span class="nav-label">Data sources</span>
+      </a>
+      <a class="nav-item" href="reports.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>
+        <span class="nav-label">Reports</span>
+      </a>
+      <a class="nav-item" href="#" data-quiet="Settings">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .4 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.4 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .4-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.4-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.4H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.4l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.4 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        <span class="nav-label">Settings</span>
+      </a>
+    </div>
+    <div class="sidebar-foot">
+      <div class="user-chip">TH</div>
+      <div>
+        <div class="nm">Tom Heffes</div>
+        <div class="rl">Tax Lead | Northgate</div>
+      </div>
+      <a class="more" href="#" data-quiet="Account menu" title="Account menu">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Icon rail (legacy, hidden) -->
+  <aside class="rail" aria-label="Workspace">
+    <div class="logo">fs</div>
+    <nav class="nav">
+      <a href="./" class="item" title="Overview"><svg class="ico" viewBox="0 0 24 24"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg></a>
+      <a href="matrix.html" class="item" title="Cost matrix"><svg class="ico" viewBox="0 0 24 24"><path d="M4 6h6v6H4zM14 6h6v6h-6zM4 16h6v4H4zM14 16h6v4h-6z"/></svg></a>
+      <a href="hierarchy.html" class="item" title="Hierarchy"><svg class="ico" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="6" rx="1.3"/><rect x="3" y="15" width="6" height="6" rx="1.3"/><rect x="15" y="15" width="6" height="6" rx="1.3"/><path d="M12 9v3M6 15v-3h12v3"/></svg></a>
+      <a href="runs.html" class="item active" title="Runs"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M10.2 8.7l5.4 3.3-5.4 3.3z"/></svg></a>
+      <a href="workflows.html" class="item" title="Workflows"><svg class="ico" viewBox="0 0 24 24"><path d="M5 7h6m0 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM5 17h6m0 0a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM5 7v10"/></svg></a>
+    </nav>
+    <div class="spacer"></div>
+    <a href="#" class="item" style="width: 40px; height: 40px;" title="Help" data-quiet="Help"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.4v.3M12 17h.01"/></svg></a>
+    <a href="#" class="item" style="width: 40px; height: 40px;" title="Settings" data-quiet="Settings"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .4 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.4 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .4-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.4-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.4H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.4l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.4 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></a>
+    <div class="me" title="Tom Heffes">TH</div>
+  </aside>
+
+  <main class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="brand-block">
+        <div class="logo">fs</div>
+        <button class="ws-switch">Northgate <svg class="ico-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l5 5 5-5"/></svg></button>
+      </div>
+      <div class="search">
+        <svg class="ico-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input placeholder="Find a run, journal or entity…" />
+        <span class="kbd">/</span>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn" title="History"><svg class="ico" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5M12 7v6l4 2"/></svg></button>
+        <button class="icon-btn" title="Notifications"><svg class="ico" viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9zM10 21a2 2 0 0 0 4 0"/></svg></button>
+        <div class="user-chip" title="Tom Heffes">TH</div>
+      </div>
+    </div>
+
+    <div class="page">
+
+      <nav class="crumbs">
+        <a href="./">Transfer Pricing</a>
+        <span class="sep">/</span>
+        <a href="./">Q4 2024</a>
+        <span class="sep">/</span>
+        <span class="here">Runs &amp; journals</span>
+      </nav>
+
+      <!-- Header -->
+      <div class="page-head" data-reveal>
+        <div>
+          <div class="page-eyebrow">
+            <span class="status-pill in-progress">Run in progress | TP-Q4-2024-12</span>
+            <span>started by <b style="color: var(--ink);">John Doe</b> | 12:42</span>
+          </div>
+          <h1 class="page-title">Runs &amp; <em>journals.</em></h1>
+          <p class="page-sub">Calculate the TP adjustment, preview journal entries, and post to the GL. Every run is reproducible and traceable.</p>
+        </div>
+        <div class="page-meta">
+          <button class="btn ghost">Settings ↗</button>
+          <button class="btn"><svg class="ico" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg> Export</button>
+          <button class="btn">Pause</button>
+          <a href="workflows?template=quarter-close" class="btn"><svg class="ico" viewBox="0 0 24 24"><path d="M5 7h6m0 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM5 17h6m0 0a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM5 7v10"/></svg> Schedule as workflow</a>
+          <button class="btn primary" data-commit><svg class="ico" viewBox="0 0 24 24"><path d="M5 4l14 8-14 8z"/></svg> New run</button>
+        </div>
+      </div>
+
+      <!-- Live run hero -->
+      <div class="hero">
+        <div class="hero-card live" data-reveal>
+          <div class="lab"><span class="live-label">Live</span> | TP-Q4-2024-12 | Dry calculate</div>
+          <div class="v-big"><em>72</em><span class="unit">%</span><span class="tx-count" style="font-size: 0.3em; color: var(--ink-3); margin-left: 8px; font-family: 'Geist Mono', monospace;">9,832 / 14,200 tx</span></div>
+          <p class="sub">Calculating cost-plus markups for Q4 2024. Estimated time remaining: <b style="color: var(--ink);">~24 seconds.</b></p>
+
+          <div class="live-progress">
+            <div class="lp-head">
+              <span>4 of 5 steps complete</span>
+              <span class="mono elapsed">Started 12:42:18 | 1m 47s elapsed</span>
+            </div>
+            <div class="lp-bar"><div class="lp-fill"></div></div>
+            <div class="lp-steps">
+              <div class="lp-step done"><span class="dot"></span> Load TB</div>
+              <div class="lp-step done"><span class="dot"></span> Apply hierarchy</div>
+              <div class="lp-step done"><span class="dot"></span> Apply rules</div>
+              <div class="lp-step active"><span class="dot"></span> Calculate markup</div>
+              <div class="lp-step"><span class="dot"></span> Generate journals</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col gap-4" style="gap: 16px;" data-reveal>
+          <div class="score-card">
+            <div class="label">Estimated adjustment to IGL</div>
+            <div class="v" style="color: var(--brand);" data-count="28.9" data-count-decimals="1" data-count-prefix="£ "><span class="unit">m</span><span class="delta"> + £ 2.1m</span></div>
+            <div class="sub">vs same matrix on Q3 trial balance | live estimate</div>
+          </div>
+          <div class="score-card">
+            <div class="label">Journals to generate</div>
+            <div class="v" data-count="186"></div>
+            <div class="sub">one DR / CR pair per entity | 0 exceptions so far</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Insight row — replaces vanity metrics with real value -->
+      <div class="insight-row" data-reveal>
+
+        <!-- 1. Top contributors driving the uplift -->
+        <div class="insight-card">
+          <div class="insight-head">
+            <div>
+              <div class="insight-title">Top contributors to uplift</div>
+              <div class="insight-sub">£24.2M of £28.9M | top 5 of 186 entities (84%)</div>
+            </div>
+            <span class="insight-meta">live</span>
+          </div>
+
+          <div class="contrib-list">
+            <div class="contrib-row">
+              <span class="rk">1</span>
+              <div class="nm">
+                <a class="label" href="entity?e=connect-finco">CONNECT FINCO (LUX)</a>
+                <div class="bar"><div data-to="100%" style="width: 0%; background: linear-gradient(90deg, var(--brand-2), var(--brand));"></div></div>
+              </div>
+              <span class="amt">£12.4M<br><span class="pct">43%</span></span>
+            </div>
+            <div class="contrib-row">
+              <span class="rk">2</span>
+              <div class="nm">
+                <a class="label" href="entity?e=northgate-solutions">Northgate Solutions doo</a>
+                <div class="bar"><div data-to="63%" style="width: 0%; background: linear-gradient(90deg, var(--brand-2), var(--brand));"></div></div>
+              </div>
+              <span class="amt">£7.8M<br><span class="pct">27%</span></span>
+            </div>
+            <div class="contrib-row">
+              <span class="rk">3</span>
+              <div class="nm">
+                <a class="label" href="entity?e=connect-bidco">Connect Bidco</a>
+                <div class="bar"><div data-to="32%" style="width: 0%; background: linear-gradient(90deg, var(--brand-2), var(--brand));"></div></div>
+              </div>
+              <span class="amt">£4.0M<br><span class="pct">14%</span></span>
+            </div>
+            <div class="contrib-row">
+              <span class="rk">4</span>
+              <div class="nm">
+                <a class="label" href="entity?e=northgate-dooel">Northgate DOOEL Skopje</a>
+                <div class="bar"><div data-to="13%" style="width: 0%; background: linear-gradient(90deg, var(--brand-2), var(--brand));"></div></div>
+              </div>
+              <span class="amt">£1.6M<br><span class="pct">6%</span></span>
+            </div>
+            <div class="contrib-row">
+              <span class="rk">5</span>
+              <div class="nm">
+                <span class="label">Northgate BH d.o.o.</span>
+                <div class="bar"><div data-to="7%" style="width: 0%; background: linear-gradient(90deg, var(--brand-2), var(--brand));"></div></div>
+              </div>
+              <span class="amt">£0.9M<br><span class="pct">3%</span></span>
+            </div>
+          </div>
+
+          <a href="#" class="insight-link" data-quiet="All entities">See all 186 entities →</a>
+        </div>
+
+        <!-- 2. Live validation & flags -->
+        <div class="insight-card">
+          <div class="insight-head">
+            <div>
+              <div class="insight-title">Validation &amp; checks</div>
+              <div class="insight-sub">4 of 5 passed | <a href="exceptions.html" style="color: var(--brand);">3 minor flags to review →</a></div>
+            </div>
+            <span class="insight-meta">running</span>
+          </div>
+
+          <div class="check-list">
+            <div class="check-row">
+              <span class="ind pass"><svg class="ico-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4 10-10"/></svg></span>
+              <div class="body"><b>Trial balance reconciled</b></div>
+              <span class="res">14.2k tx | 0 mismatches</span>
+            </div>
+            <div class="check-row">
+              <span class="ind pass"><svg class="ico-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4 10-10"/></svg></span>
+              <div class="body"><b>Hierarchy applied</b></div>
+              <span class="res">182 cost centres</span>
+            </div>
+            <div class="check-row">
+              <span class="ind pass"><svg class="ico-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4 10-10"/></svg></span>
+              <div class="body"><b>Markup rules applied</b></div>
+              <span class="res">23 of 23 cells</span>
+            </div>
+            <div class="check-row">
+              <span class="ind live"><svg class="ico-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg></span>
+              <div class="body"><b>Calculating markup</b></div>
+              <span class="res" style="color: var(--brand);">72% | ~24s left</span>
+            </div>
+            <div class="check-row">
+              <span class="ind pending"><svg class="ico-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg></span>
+              <div class="body" style="color: var(--ink-3);">Generate journals</div>
+              <span class="res">pending</span>
+            </div>
+          </div>
+
+          <a href="#" class="insight-link" data-quiet="Validation log">Open validation log →</a>
+        </div>
+
+        <!-- 3. What changed vs last quarter -->
+        <div class="insight-card">
+          <div class="insight-head">
+            <div>
+              <div class="insight-title">Change vs Q3 2024</div>
+              <div class="insight-sub">£28.9M now | £26.8M last quarter</div>
+            </div>
+            <span class="insight-meta pos">+£2.1M</span>
+          </div>
+
+          <div class="attr-list">
+            <div class="attr-row">
+              <div class="lbl">
+                <span>Markup rule changes</span>
+                <span class="desc">2 cells moved to Cost +7%</span>
+              </div>
+              <span class="amt">+£1.4M</span>
+            </div>
+            <div class="attr-row">
+              <div class="lbl">
+                <span>New entities mapped</span>
+                <span class="desc">4 added to Routine group</span>
+              </div>
+              <span class="amt">+£0.6M</span>
+            </div>
+            <div class="attr-row">
+              <div class="lbl">
+                <span>TB activity variance</span>
+                <span class="desc">Higher Q4 cost base</span>
+              </div>
+              <span class="amt">+£0.4M</span>
+            </div>
+            <div class="attr-row">
+              <div class="lbl">
+                <span>New 3P exclusions</span>
+                <span class="desc">CFO costs removed from base</span>
+              </div>
+              <span class="amt neg">−£0.3M</span>
+            </div>
+          </div>
+
+          <a href="#" class="insight-link" data-quiet="Change report">Full change report →</a>
+        </div>
+
+      </div>
+
+      <!-- Journals preview + run history -->
+      <div class="journals" data-reveal>
+        <div class="j-head">
+          <div class="row gap-3">
+            <div class="card-title"><span class="num-badge">JOURNALS</span> Preview for TP-Q4-2024-12</div>
+            <span class="status-pill warn"><span class="dot"></span> Not yet posted</span>
+          </div>
+          <div class="row gap-2">
+            <button class="btn ghost" style="padding: 5px 10px; font-size: 12px;">Filter</button>
+            <button class="btn ghost" style="padding: 5px 10px; font-size: 12px;"><svg class="ico-xs" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg> CSV</button>
+            <button class="btn brand" style="padding: 5px 12px; font-size: 12px;"><svg class="ico-xs" viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg> Post all 186 to GL</button>
+          </div>
+        </div>
+        <table class="journals-table">
+          <thead>
+            <tr>
+              <th style="width: 60px;">#</th>
+              <th>Entity</th>
+              <th>Counterparty</th>
+              <th>Rule applied</th>
+              <th style="text-align: right;">Base</th>
+              <th style="text-align: right;">Markup</th>
+              <th style="text-align: right;">DR / CR</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="num">001</td>
+              <td><div class="ent-cell"><span class="ent-av" style="width: 26px; height: 26px; border-radius: 7px; background: linear-gradient(135deg, oklch(86% 0.04 254), oklch(74% 0.05 254)); color: var(--brand-2); display: grid; place-items: center; font-size: 11px; font-weight: 600;">CF</span> CONNECT FINCO (LUX)</div></td>
+              <td class="mono" style="color: var(--ink-3);">Northgate Group HQ</td>
+              <td><span class="pill markup-7"><span class="dot"></span> Cost +7%</span></td>
+              <td class="num">£ 14.20m</td>
+              <td class="num pos">+ £ 0.99m</td>
+              <td class="num">£ 15.19m</td>
+              <td><a href="#" style="color: var(--brand); font-size: 12px;">View ↗</a></td>
+            </tr>
+            <tr>
+              <td class="num">002</td>
+              <td><div class="ent-cell"><span class="ent-av" style="width: 26px; height: 26px; border-radius: 7px; background: linear-gradient(135deg, oklch(90% 0.05 162), oklch(75% 0.08 162)); color: var(--mint-ink); display: grid; place-items: center; font-size: 11px; font-weight: 600;">IS</span> Northgate Solutions doo</div></td>
+              <td class="mono" style="color: var(--ink-3);">Northgate Group HQ</td>
+              <td><span class="pill markup-7"><span class="dot"></span> Cost +7%</span></td>
+              <td class="num">£ 11.20m</td>
+              <td class="num pos">+ £ 0.78m</td>
+              <td class="num">£ 11.98m</td>
+              <td><a href="#" style="color: var(--brand); font-size: 12px;">View ↗</a></td>
+            </tr>
+            <tr>
+              <td class="num">003</td>
+              <td><div class="ent-cell"><span class="ent-av" style="width: 26px; height: 26px; border-radius: 7px; background: linear-gradient(135deg, oklch(90% 0.05 60), oklch(78% 0.10 60)); color: var(--peach-ink); display: grid; place-items: center; font-size: 11px; font-weight: 600;">CB</span> Connect Bidco</div></td>
+              <td class="mono" style="color: var(--ink-3);">Northgate Group HQ</td>
+              <td><span class="pill markup-5"><span class="dot"></span> Cost +5%</span></td>
+              <td class="num">£ 6.80m</td>
+              <td class="num pos">+ £ 0.34m</td>
+              <td class="num">£ 7.14m</td>
+              <td><a href="#" style="color: var(--brand); font-size: 12px;">View ↗</a></td>
+            </tr>
+            <tr>
+              <td class="num">004</td>
+              <td><div class="ent-cell"><span class="ent-av" style="width: 26px; height: 26px; border-radius: 7px; background: linear-gradient(135deg, oklch(90% 0.04 295), oklch(78% 0.08 295)); color: var(--lilac-ink); display: grid; place-items: center; font-size: 11px; font-weight: 600;">DK</span> Northgate DOOEL Skopje</div></td>
+              <td class="mono" style="color: var(--ink-3);">CONNECT FINCO (LUX)</td>
+              <td><span class="pill at-cost"><span class="dot"></span> At cost</span></td>
+              <td class="num">£ 3.60m</td>
+              <td class="num" style="color: var(--ink-3);">–</td>
+              <td class="num">£ 3.60m</td>
+              <td><a href="#" style="color: var(--brand); font-size: 12px;">View ↗</a></td>
+            </tr>
+            <tr>
+              <td class="num">005</td>
+              <td><div class="ent-cell"><span class="ent-av" style="width: 26px; height: 26px; border-radius: 7px; background: linear-gradient(135deg, oklch(86% 0.04 254), oklch(74% 0.05 254)); color: var(--brand-2); display: grid; place-items: center; font-size: 11px; font-weight: 600;">BH</span> Northgate BH d.o.o.</div></td>
+              <td class="mono" style="color: var(--ink-3);">Northgate Group HQ</td>
+              <td><span class="pill exclude"><span class="dot"></span> Exclude</span></td>
+              <td class="num">£ 2.40m</td>
+              <td class="num neg">− £ 0.20m</td>
+              <td class="num">£ 2.20m</td>
+              <td><a href="#" style="color: var(--brand); font-size: 12px;">View ↗</a></td>
+            </tr>
+            <tr>
+              <td class="num">006</td>
+              <td><div class="ent-cell"><span class="ent-av" style="width: 26px; height: 26px; border-radius: 7px; background: linear-gradient(135deg, oklch(90% 0.05 162), oklch(75% 0.08 162)); color: var(--mint-ink); display: grid; place-items: center; font-size: 11px; font-weight: 600;">NW</span> New Wave Broadband</div></td>
+              <td class="mono" style="color: var(--ink-3);">Northgate Group HQ</td>
+              <td><span class="pill markup-7"><span class="dot"></span> Cost +7%</span></td>
+              <td class="num">£ 28.40m</td>
+              <td class="num pos">+ £ 1.99m</td>
+              <td class="num">£ 30.39m</td>
+              <td><a href="#" style="color: var(--brand); font-size: 12px;">View ↗</a></td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; border-top: 1px solid var(--line-2); background: var(--bg-3); font-size: 12px;">
+          <span class="muted">Showing 6 of 186 journals | <a href="#" data-quiet="All journals" style="color: var(--brand);">expand →</a></span>
+          <span class="mono" style="color: var(--ink);">Total uplift: <b>£ 28.9m</b></span>
+        </div>
+      </div>
+
+      <!-- Run history + post status -->
+      <div class="grid-2" data-reveal>
+        <div class="card flush">
+          <div class="card-head">
+            <div class="card-title"><span class="num-badge">HISTORY</span> Recent runs</div>
+            <div class="row gap-2">
+              <button class="btn ghost" style="padding: 4px 8px; font-size: 12px;">All</button>
+              <button class="btn ghost" style="padding: 4px 8px; font-size: 12px;">Dry only</button>
+              <button class="btn ghost" style="padding: 4px 8px; font-size: 12px;">Posted</button>
+            </div>
+          </div>
+          <div class="run-history">
+            <div class="run-row">
+              <div class="ts"><b>now</b>12:42</div>
+              <div class="title">
+                <div class="nm">TP-Q4-2024-12 | Dry calculate</div>
+                <div class="meta"><span class="status-pill in-progress" style="font-size: 11px;"><span class="dot"></span> Running</span> | 9,832 / 14,200 tx</div>
+              </div>
+              <svg class="spark" viewBox="0 0 100 30" width="100" height="30" preserveAspectRatio="none"><path class="area" d="M0,22 L20,20 L40,18 L60,16 L80,12 L100,8 L100,30 L0,30 Z"/><path class="line" d="M0,22 L20,20 L40,18 L60,16 L80,12 L100,8"/></svg>
+              <div class="val">£ 28.9m</div>
+            </div>
+            <div class="run-row">
+              <div class="ts"><b>2h</b>10:18</div>
+              <div class="title">
+                <div class="nm">TP-Q4-2024-11 | Dry calculate</div>
+                <div class="meta"><span class="status-pill done" style="font-size: 11px;"><span class="dot"></span> Complete</span> | 2m 04s</div>
+              </div>
+              <svg class="spark mint" viewBox="0 0 100 30" width="100" height="30" preserveAspectRatio="none"><path class="area" d="M0,18 L20,16 L40,14 L60,16 L80,10 L100,8 L100,30 L0,30 Z"/><path class="line" d="M0,18 L20,16 L40,14 L60,16 L80,10 L100,8"/></svg>
+              <div class="val">£ 26.4m</div>
+            </div>
+            <div class="run-row">
+              <div class="ts"><b>Yest.</b>16:02</div>
+              <div class="title">
+                <div class="nm">TP-Q4-2024-10 | Dry calculate</div>
+                <div class="meta"><span class="status-pill done" style="font-size: 11px;"><span class="dot"></span> Complete</span> | 1m 58s</div>
+              </div>
+              <svg class="spark mint" viewBox="0 0 100 30" width="100" height="30" preserveAspectRatio="none"><path class="area" d="M0,20 L20,18 L40,18 L60,14 L80,12 L100,10 L100,30 L0,30 Z"/><path class="line" d="M0,20 L20,18 L40,18 L60,14 L80,12 L100,10"/></svg>
+              <div class="val">£ 25.1m</div>
+            </div>
+            <div class="run-row">
+              <div class="ts"><b>21 Oct</b>14:30</div>
+              <div class="title">
+                <div class="nm">TP-Q3-2024 | Posted to GL</div>
+                <div class="meta"><span class="status-pill done" style="font-size: 11px;"><span class="dot"></span> Posted</span> | 186 journals | Maria R.</div>
+              </div>
+              <svg class="spark mint" viewBox="0 0 100 30" width="100" height="30" preserveAspectRatio="none"><path class="area" d="M0,24 L20,22 L40,18 L60,14 L80,12 L100,8 L100,30 L0,30 Z"/><path class="line" d="M0,24 L20,22 L40,18 L60,14 L80,12 L100,8"/></svg>
+              <div class="val">£ 26.8m</div>
+            </div>
+            <div class="run-row">
+              <div class="ts"><b>21 Oct</b>14:12</div>
+              <div class="title">
+                <div class="nm">TP-Q3-2024-DRY-6 | Dry calculate</div>
+                <div class="meta"><span class="status-pill done" style="font-size: 11px;"><span class="dot"></span> Complete</span> | 2m 22s</div>
+              </div>
+              <svg class="spark" viewBox="0 0 100 30" width="100" height="30" preserveAspectRatio="none"><path class="area" d="M0,22 L20,20 L40,18 L60,14 L80,16 L100,14 L100,30 L0,30 Z"/><path class="line" d="M0,22 L20,20 L40,18 L60,14 L80,16 L100,14"/></svg>
+              <div class="val">£ 26.8m</div>
+            </div>
+            <div class="run-row">
+              <div class="ts"><b>18 Oct</b>09:14</div>
+              <div class="title">
+                <div class="nm">TP-Q3-2024-DRY-5 | Dry calculate</div>
+                <div class="meta"><span class="status-pill danger" style="font-size: 11px;"><span class="dot"></span> Failed</span> | TB schema drift</div>
+              </div>
+              <svg class="spark coral" viewBox="0 0 100 30" width="100" height="30" preserveAspectRatio="none"><path class="line" d="M0,18 L25,14 L25,14 L40,22 L60,22 L80,22 L100,22"/></svg>
+              <div class="val muted">–</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Post checklist -->
+        <div class="card flush">
+          <div class="card-head">
+            <div class="card-title">Before you post</div>
+            <a href="#" class="btn ghost" data-quiet="Checklist detail" style="padding: 4px 10px; font-size: 12px;">Open checklist ↗</a>
+          </div>
+          <div style="padding: 6px 20px 18px;">
+            <div class="checklist">
+
+              <div class="checklist-row">
+                <div class="mark done"><svg class="ico-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4 10-10"/></svg></div>
+                <div class="body">
+                  <div class="ttl">Hierarchy approved</div>
+                  <div class="meta">v 4.2 | by Maria R. on 21 Feb</div>
+                </div>
+                <div class="slot-tag done">Done</div>
+              </div>
+
+              <div class="checklist-row">
+                <div class="mark done"><svg class="ico-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l4 4 10-10"/></svg></div>
+                <div class="body">
+                  <div class="ttl">Quality check passed</div>
+                  <div class="meta">0 variances | 14.2k transactions</div>
+                </div>
+                <div class="slot-tag done">Done</div>
+              </div>
+
+              <div class="checklist-row">
+                <div class="mark active">3</div>
+                <div class="body">
+                  <div class="ttl">Matrix fully set</div>
+                  <div class="meta">23 of 25 cells | 2 still ignore-default | <a href="matrix.html" style="color: var(--brand);">review →</a></div>
+                </div>
+                <div class="slot-tag active">In progress</div>
+              </div>
+
+              <div class="checklist-row">
+                <div class="mark">4</div>
+                <div class="body">
+                  <div class="ttl">Sign-off from Tax Lead</div>
+                  <div class="meta">Required for posts &gt; £ 10m</div>
+                </div>
+                <button class="btn">Request sign-off</button>
+              </div>
+
+              <div class="checklist-row">
+                <div class="mark">5</div>
+                <div class="body">
+                  <div class="ttl">Post to GL</div>
+                  <div class="meta">SAP via journal-entry connector</div>
+                </div>
+                <button class="btn primary" disabled>Post</button>
+              </div>
+
+            </div>
+
+            <div style="background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-top: 16px; font-size: 12px; color: var(--ink-2); line-height: 1.5;">
+              When all five steps are complete the <b style="color: var(--ink);">Post to GL</b> button activates. Every post is reversible from the run page.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer nav (close the loop) -->
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 32px 0 0; margin-top: 32px; border-top: 1px solid var(--line);">
+        <a href="hierarchy.html" class="btn soft"><svg class="ico" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg> Back to hierarchy</a>
+        <span class="muted" style="font-size: 12px;">End of flow | period close in 19 days</span>
+        <a href="./" class="btn primary">Done <svg class="ico" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  'use strict';
+  if (!window.Arkk || !window.ArkkData) return;
+  var Arkk = window.Arkk, D = window.ArkkData, el = Arkk.el, icon = Arkk.icon, clear = Arkk.clear;
+
+  var glStore = Arkk.store('arkk.gl.v1', function () { return { posted: false, at: null, journals: 186 }; });
+  var runsStore = Arkk.store('arkk.runs.v1', function () { return { created: [] }; });
+
+  function headerBtn(label) {
+    return Array.prototype.filter.call(document.querySelectorAll('.page-meta .btn'), function (b) { return b.textContent.trim().indexOf(label) === 0; })[0];
+  }
+
+  /* ---- Header: Settings / Export / Pause / New run ---- */
+  var settingsBtn = headerBtn('Settings');
+  if (settingsBtn) settingsBtn.addEventListener('click', function () { window.location.href = 'settings.html'; });
+
+  var exportBtn = headerBtn('Export');
+  if (exportBtn) {
+    exportBtn.addEventListener('click', function () {
+      Arkk.exportCSV('northgate-q4-2024-runs.csv', ['Run', 'Status', 'When', 'Value'], D.runs.map(function (r) { return [r.id, r.status, r.when, r.value]; }));
+    });
+  }
+
+  var pauseBtn = headerBtn('Pause');
+  if (pauseBtn) {
+    pauseBtn.addEventListener('click', function () {
+      if (!Arkk.runsTicker) return;
+      var isPaused = Arkk.runsTicker.toggle();
+      Arkk.setLeadingText(pauseBtn, isPaused ? 'Resume' : 'Pause');
+    });
+  }
+
+  var newRunBtn = headerBtn('New run');
+  if (newRunBtn) {
+    newRunBtn.removeAttribute('data-commit');
+    newRunBtn.addEventListener('click', function () {
+      if (document.querySelector('.arkk-new-run-form')) return;
+      var form = el('div', { cls: 'arkk-new-run-form', style: 'position:absolute; right:0; top:100%; margin-top:8px; z-index:40; width:280px; background:oklch(100% 0 0 / 0.96); border:1px solid var(--line); border-radius:var(--r-lg); box-shadow:var(--shadow-pop); padding:14px;' });
+      form.appendChild(el('div', { text: 'New run', style: 'font-size:13px; font-weight:600; color:var(--ink); margin-bottom:10px;' }));
+
+      var periodLabel = el('label', { text: 'Period', style: 'display:block; font-size:11.5px; color:var(--ink-3); margin-bottom:4px;' });
+      var periodSel = document.createElement('select');
+      periodSel.style.cssText = 'width:100%; box-sizing:border-box; padding:7px 9px; font-size:13px; font-family:inherit; border:1px solid var(--line); border-radius:8px; background:var(--bg-3); color:var(--ink); margin-bottom:10px;';
+      ['Q4 2024', 'Q3 2024'].forEach(function (p) { var o = document.createElement('option'); o.value = p; o.textContent = p; periodSel.appendChild(o); });
+      form.appendChild(periodLabel); form.appendChild(periodSel);
+
+      var kindLabel = el('label', { text: 'Type', style: 'display:block; font-size:11.5px; color:var(--ink-3); margin-bottom:4px;' });
+      var kindSeg = el('div', { cls: 'seg', style: 'margin-bottom:12px;' });
+      var dryBtn = el('button', { text: 'Dry calculate', type: 'button', cls: 'on' });
+      var liveBtn = el('button', { text: 'Live', type: 'button' });
+      dryBtn.addEventListener('click', function () { dryBtn.classList.add('on'); liveBtn.classList.remove('on'); });
+      liveBtn.addEventListener('click', function () { liveBtn.classList.add('on'); dryBtn.classList.remove('on'); });
+      kindSeg.appendChild(dryBtn); kindSeg.appendChild(liveBtn);
+      form.appendChild(kindLabel); form.appendChild(kindSeg);
+
+      var actions = el('div', { style: 'display:flex; gap:8px;' });
+      var cancel = el('button', { cls: 'btn soft', text: 'Cancel', type: 'button', style: 'flex:1; justify-content:center;' });
+      var create = el('button', { cls: 'btn primary', text: 'Create', type: 'button', style: 'flex:1; justify-content:center;' });
+      actions.appendChild(cancel); actions.appendChild(create);
+      form.appendChild(actions);
+
+      newRunBtn.style.position = 'relative';
+      newRunBtn.parentElement.style.position = 'relative';
+      newRunBtn.insertAdjacentElement('afterend', form);
+
+      cancel.addEventListener('click', function () { form.remove(); });
+      create.addEventListener('click', function () {
+        Arkk.commit(create);
+        var kind = dryBtn.classList.contains('on') ? 'dry' : 'live';
+        var state = runsStore.get();
+        var newId = 'TP-Q4-2024-' + (14 + state.created.length);
+        state.created.push({ id: newId, period: periodSel.value, kind: kind, createdAt: Date.now() });
+        runsStore.set(state, true);
+        Arkk.activity.log({ kind: 'run', title: 'Started ' + newId, meta: kind === 'dry' ? 'dry calculate' : 'live', href: 'run-detail?run=' + newId });
+        Arkk.flow.set({ dryRun: newId });
+        setTimeout(function () { window.location.href = 'run-detail?run=' + newId + '&fresh=1'; }, Arkk.reduce ? 0 : 300);
+      });
+    });
+  }
+
+  /* ---- Insight card 2: validation check-rows 2-5 (row 1 already wired in arkk.js) ---- */
+  var CHECK_DETAIL = [
+    null,
+    { headline: 'Hierarchy applied', failedHeadline: '3 cost centres are still unmapped in this hierarchy version', res: '182 cost centres', failedRes: 'needs review' },
+    { headline: 'Markup rules applied', failedHeadline: '2 matrix cells are still on the ignore-default rule', res: '23 of 23 cells', failedRes: '21 of 23 cells' },
+    { headline: 'Calculating markup', failedHeadline: 'Calculating markup', res: '72% | ~24s left', failedRes: '72% | ~24s left' },
+    { headline: 'Generate journals', failedHeadline: 'Generate journals', res: 'pending', failedRes: 'pending' }
+  ];
+  document.querySelectorAll('.check-row').forEach(function (row, i) {
+    var detail = CHECK_DETAIL[i];
+    if (!detail || i === 3 || i === 4) return; /* rows 4/5 (index 3/4) are live/pending states, not user-togglable previews */
+    row.style.cursor = 'pointer';
+    row.title = 'Click to preview this check';
+    row.addEventListener('click', function () {
+      var failed = row.dataset.failed === '1';
+      var ind = row.querySelector('.ind');
+      var body = row.querySelector('.body');
+      var res = row.querySelector('.res');
+      clear(ind); clear(body);
+      if (!failed) {
+        row.dataset.failed = '1';
+        ind.className = 'ind pending';
+        ind.style.color = 'var(--coral-ink)';
+        ind.appendChild(icon('M12 9v4M12 17h.01', { strokeWidth: '2' }));
+        body.appendChild(el('b', { text: detail.failedHeadline }));
+        res.textContent = detail.failedRes;
+      } else {
+        row.dataset.failed = '';
+        ind.className = 'ind pass';
+        ind.style.color = '';
+        ind.appendChild(icon('M5 12l4 4 10-10', { strokeWidth: '2.6' }));
+        body.appendChild(el('b', { text: detail.headline }));
+        res.textContent = detail.res;
+      }
+    });
+  });
+
+  var validationLogLink = document.querySelector('a[data-quiet="Validation log"]');
+  if (validationLogLink) {
+    validationLogLink.removeAttribute('data-quiet');
+    validationLogLink.addEventListener('click', function (e) { e.preventDefault(); if (Arkk.chrome) Arkk.chrome.openHistory('runs'); });
+  }
+
+  var allEntitiesLink = document.querySelector('a[data-quiet="All entities"]');
+  if (allEntitiesLink) {
+    allEntitiesLink.removeAttribute('data-quiet');
+    allEntitiesLink.addEventListener('click', function (e) { e.preventDefault(); window.location.href = 'entity?e=connect-finco'; });
+  }
+
+  var changeReportLink = document.querySelector('a[data-quiet="Change report"]');
+  if (changeReportLink) {
+    changeReportLink.removeAttribute('data-quiet');
+    changeReportLink.addEventListener('click', function (e) { e.preventDefault(); window.location.href = 'reports.html#change-report'; });
+  }
+
+  /* ---- Journals: Filter, CSV, Post all 186 to GL ---- */
+  var journalRows = document.querySelectorAll('table.journals-table tbody tr');
+  journalRows.forEach(function (row) { row.dataset.journalType = 'dry'; });
+
+  var jHead = document.querySelector('.journals .j-head');
+  var jButtons = jHead ? jHead.querySelectorAll('.row.gap-2 .btn') : [];
+  var journalFilterBtn = Array.prototype.filter.call(jButtons, function (b) { return b.textContent.trim() === 'Filter'; })[0];
+  var journalCsvBtn = Array.prototype.filter.call(jButtons, function (b) { return /CSV/.test(b.textContent); })[0];
+  var postAllBtn = Array.prototype.filter.call(jButtons, function (b) { return /Post all/.test(b.textContent); })[0];
+  var notPostedPill = jHead ? jHead.querySelector('.status-pill.warn') : null;
+  var footerPostBtn = Array.prototype.filter.call(document.querySelectorAll('.checklist-row .btn.primary'), function (b) { return b.textContent.trim() === 'Post'; })[0];
+  var signOffBtn = Array.prototype.filter.call(document.querySelectorAll('.checklist-row .btn'), function (b) { return /Request sign-off/.test(b.textContent); })[0];
+
+  function journalTableRows(type) {
+    return Array.prototype.filter.call(journalRows, function (r) { return type === 'all' || r.dataset.journalType === type; });
+  }
+
+  if (journalFilterBtn) {
+    journalFilterBtn.addEventListener('click', function () {
+      var existing = document.querySelector('.arkk-journal-filter-menu');
+      if (existing) { existing.remove(); return; }
+      var menu = el('div', { cls: 'arkk-journal-filter-menu', style: 'position:absolute; z-index:40; margin-top:6px; background:oklch(100% 0 0 / 0.96); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow-pop); padding:6px; min-width:140px;' });
+      ['all', 'dry', 'posted'].forEach(function (type) {
+        var label = type === 'all' ? 'All' : (type === 'dry' ? 'Dry only' : 'Posted');
+        var opt = el('button', { type: 'button', text: label, style: 'display:block; width:100%; text-align:left; padding:7px 9px; border-radius:8px; border:0; background:transparent; font-size:12.5px; color:var(--ink); cursor:pointer; font-family:inherit;' });
+        opt.addEventListener('click', function () {
+          journalRows.forEach(function (r) { r.style.display = (type === 'all' || r.dataset.journalType === type) ? '' : 'none'; });
+          menu.remove();
+        });
+        menu.appendChild(opt);
+      });
+      journalFilterBtn.style.position = 'relative';
+      journalFilterBtn.insertAdjacentElement('afterend', menu);
+    });
+  }
+
+  if (journalCsvBtn) {
+    journalCsvBtn.addEventListener('click', function () {
+      var rows = journalTableRows('all').map(function (r) {
+        var cells = r.querySelectorAll('td');
+        return [cells[0].textContent.trim(), cells[1].textContent.trim(), cells[2].textContent.trim(), cells[3].textContent.trim(), cells[4].textContent.trim(), cells[5].textContent.trim(), cells[6].textContent.trim()];
+      });
+      Arkk.exportCSV('northgate-q4-2024-journals.csv', ['#', 'Entity', 'Counterparty', 'Rule', 'Base', 'Markup', 'DR/CR'], rows);
+    });
+  }
+
+  function renderPosted() {
+    if (notPostedPill) { clear(notPostedPill); notPostedPill.className = 'status-pill done'; notPostedPill.appendChild(el('span', { cls: 'dot' })); notPostedPill.appendChild(document.createTextNode('Posted to GL')); }
+    if (postAllBtn) {
+      clear(postAllBtn);
+      postAllBtn.disabled = true;
+      postAllBtn.className = 'btn';
+      postAllBtn.style.opacity = '0.7';
+      postAllBtn.appendChild(icon('M5 12l4 4 10-10', { cls: 'ico-xs' }));
+      postAllBtn.appendChild(document.createTextNode(' Posted to GL | 186 journals'));
+    }
+    journalRows.forEach(function (r) { r.dataset.journalType = 'posted'; });
+    if (footerPostBtn) { footerPostBtn.disabled = true; footerPostBtn.textContent = 'Posted'; }
+  }
+
+  function doPostAll(fromFooter) {
+    var gl = glStore.get();
+    if (gl.posted) return;
+    var confirmRow = document.querySelector('.arkk-post-confirm');
+    if (confirmRow) return;
+
+    var band = el('div', { cls: 'arkk-post-confirm', style: 'display:flex; align-items:center; gap:12px; padding:12px 16px; margin:10px 18px 0; background: linear-gradient(180deg, var(--brand-soft), var(--surface)); border-radius: var(--r-md);' });
+    band.appendChild(el('span', { text: 'Post ' + D.quarter.journals + ' journals | ' + D.quarter.uplift + ' to the general ledger?', style: 'flex:1; font-size:13px; color:var(--ink-2);' }));
+    var cancelBtn = el('button', { cls: 'btn soft', text: 'Cancel', type: 'button' });
+    var confirmBtn = el('button', { cls: 'btn primary', text: 'Post all', type: 'button' });
+    band.appendChild(cancelBtn); band.appendChild(confirmBtn);
+    jHead.insertAdjacentElement('afterend', band);
+
+    cancelBtn.addEventListener('click', function () { band.remove(); });
+    confirmBtn.addEventListener('click', function () {
+      Arkk.commit(confirmBtn);
+      confirmBtn.disabled = true; cancelBtn.disabled = true;
+      clear(band);
+      var msg = el('div', { style: 'flex:1; font-size:13px; color:var(--ink-2);' });
+      msg.appendChild(document.createTextNode('Posting ' + D.quarter.journals + ' journals to GL...'));
+      var track = el('div', { cls: 'lp-bar', style: 'margin-top:8px;' });
+      var fill = el('div', { cls: 'lp-fill', style: 'width:0%; transition: width 3200ms var(--ease-house);' });
+      track.appendChild(fill);
+      band.appendChild(msg); band.appendChild(track);
+      requestAnimationFrame(function () { fill.style.width = '100%'; });
+      setTimeout(function () {
+        glStore.set({ posted: true, at: Date.now(), journals: D.quarter.journals }, false);
+        renderPosted();
+        band.remove();
+        Arkk.activity.log({ kind: 'run', title: 'Posted 186 journals to GL', meta: D.quarter.uplift, href: 'runs.html' });
+        Arkk.toast('Posted 186 journals to GL.');
+      }, Arkk.reduce ? 0 : 3200);
+    });
+  }
+
+  if (postAllBtn) postAllBtn.addEventListener('click', function () { doPostAll(false); });
+  if (footerPostBtn) {
+    footerPostBtn.disabled = false;
+    footerPostBtn.addEventListener('click', function () { doPostAll(true); });
+  }
+  if (glStore.get().posted) renderPosted();
+
+  if (signOffBtn) {
+    signOffBtn.addEventListener('click', function () {
+      var row = signOffBtn.closest('.checklist-row');
+      if (row.querySelector('.arkk-signoff-preview')) return;
+      var preview = el('div', { cls: 'arkk-signoff-preview', style: 'flex-basis:100%; margin-top:10px; padding:10px 12px; background:var(--bg-2); border-radius:9px; font-size:12.5px; color:var(--ink-2); display:flex; align-items:center; gap:10px;' });
+      preview.appendChild(el('span', { text: 'Request sign-off from Maria R. on 186 journals?', style: 'flex:1;' }));
+      var cancel = el('button', { cls: 'btn ghost', text: 'Cancel', type: 'button', style: 'padding:4px 8px; font-size:11.5px;' });
+      var send = el('button', { cls: 'btn', text: 'Send request', type: 'button', style: 'padding:4px 8px; font-size:11.5px;' });
+      preview.appendChild(cancel); preview.appendChild(send);
+      row.appendChild(preview);
+      cancel.addEventListener('click', function () { preview.remove(); });
+      send.addEventListener('click', function () {
+        Arkk.commit(send);
+        preview.remove();
+        var slot = row.querySelector('.slot-tag') || row.querySelector('.btn');
+        signOffBtn.replaceWith(el('span', { cls: 'status-pill in-progress', text: 'Sign-off requested' }));
+        Arkk.activity.log({ kind: 'run', title: 'Sign-off requested from Maria R.', meta: '186 journals', href: 'runs.html' });
+        Arkk.toast('Sign-off requested from Maria R.');
+      });
+    });
+  }
+
+  /* ---- All journals (expand inline) ---- */
+  var allJournalsLink = document.querySelector('a[data-quiet="All journals"]');
+  if (allJournalsLink) {
+    allJournalsLink.removeAttribute('data-quiet');
+    var expanded = false;
+    var EXTRA_ROWS = [
+      ['007', 'Connect Bidco', 'Northgate Group HQ', 'markup-7', '£ 4.10m', '+ £ 0.29m', '£ 4.39m'],
+      ['008', 'New Wave Broadband', 'CONNECT FINCO (LUX)', 'at-cost', '£ 1.80m', '–', '£ 1.80m'],
+      ['009', 'Northgate DOOEL Skopje', 'Northgate Group HQ', 'markup-5', '£ 2.20m', '+ £ 0.11m', '£ 2.31m']
+    ];
+    allJournalsLink.addEventListener('click', function (e) {
+      e.preventDefault();
+      var tbody = document.querySelector('table.journals-table tbody');
+      if (!expanded) {
+        EXTRA_ROWS.forEach(function (r) {
+          var tr = el('tr');
+          tr.dataset.journalType = 'dry';
+          tr.appendChild(el('td', { cls: 'num', text: r[0] }));
+          tr.appendChild(el('td', { text: r[1] }));
+          var cp = el('td', { cls: 'mono', text: r[2], style: 'color: var(--ink-3);' });
+          tr.appendChild(cp);
+          var ruleTd = el('td');
+          ruleTd.appendChild(el('span', { cls: 'pill ' + r[3], text: r[3].replace('markup-', 'Cost +').replace('at-cost', 'At cost') }));
+          tr.appendChild(ruleTd);
+          tr.appendChild(el('td', { cls: 'num', text: r[4] }));
+          tr.appendChild(el('td', { cls: 'num', text: r[5] }));
+          tr.appendChild(el('td', { cls: 'num', text: r[6] }));
+          tr.appendChild(el('td'));
+          tbody.appendChild(tr);
+        });
+        journalRows = document.querySelectorAll('table.journals-table tbody tr');
+        allJournalsLink.textContent = 'collapse ←';
+        var muted = allJournalsLink.closest('span') || allJournalsLink.parentElement;
+        if (muted) muted.firstChild && (muted.firstChild.nodeValue = 'Showing 9 of 186 journals | ');
+        expanded = true;
+      } else {
+        EXTRA_ROWS.forEach(function () { var last = document.querySelector('table.journals-table tbody tr:last-child'); if (last) last.remove(); });
+        journalRows = document.querySelectorAll('table.journals-table tbody tr');
+        allJournalsLink.textContent = 'expand →';
+        var muted2 = allJournalsLink.closest('span') || allJournalsLink.parentElement;
+        if (muted2) muted2.firstChild && (muted2.firstChild.nodeValue = 'Showing 6 of 186 journals | ');
+        expanded = false;
+      }
+    });
+  }
+
+  /* ---- Run history: All / Dry only / Posted filter ---- */
+  var historyButtons = document.querySelectorAll('.run-history').length ? document.querySelectorAll('.card.flush .card-head .row.gap-2 .btn.ghost') : [];
+  var histAll = Array.prototype.filter.call(historyButtons, function (b) { return b.textContent.trim() === 'All'; })[0];
+  var histDry = Array.prototype.filter.call(historyButtons, function (b) { return b.textContent.trim() === 'Dry only'; })[0];
+  var histPosted = Array.prototype.filter.call(historyButtons, function (b) { return b.textContent.trim() === 'Posted'; })[0];
+  var runRows = document.querySelectorAll('.run-history .run-row');
+  function classifyRunRow(row) { return /Posted/.test(row.textContent) ? 'posted' : 'dry'; }
+  function setHistFilter(type, btn) {
+    [histAll, histDry, histPosted].forEach(function (b) { if (b) b.classList.remove('on'); });
+    if (btn) btn.classList.add('on');
+    runRows.forEach(function (row) { row.style.display = (type === 'all' || classifyRunRow(row) === type) ? '' : 'none'; });
+  }
+  if (histAll) histAll.addEventListener('click', function () { setHistFilter('all', histAll); });
+  if (histDry) histDry.addEventListener('click', function () { setHistFilter('dry', histDry); });
+  if (histPosted) histPosted.addEventListener('click', function () { setHistFilter('posted', histPosted); });
+
+  /* ---- Checklist detail ---- */
+  var checklistDetailLink = document.querySelector('a[data-quiet="Checklist detail"]');
+  if (checklistDetailLink) {
+    checklistDetailLink.removeAttribute('data-quiet');
+    var detailOpen = false;
+    var CHECKLIST_NOTES = [
+      'Approved by Maria R. on the current hierarchy version (v 4.2).',
+      'Ran against the full 14.2k transaction trial balance, 0 variances.',
+      '2 cells still on the ignore-default rule | review in the cost matrix.',
+      'Required for any post over £ 10m per the Northgate sign-off policy.',
+      'Posts via the SAP journal-entry connector | reversible from this page.'
+    ];
+    checklistDetailLink.addEventListener('click', function (e) {
+      e.preventDefault();
+      detailOpen = !detailOpen;
+      checklistDetailLink.textContent = detailOpen ? 'Hide detail' : 'Open checklist ↗';
+      document.querySelectorAll('.checklist-row').forEach(function (row, i) {
+        var existing = row.querySelector('.arkk-checklist-note');
+        if (detailOpen && !existing) {
+          var note = el('div', { cls: 'arkk-checklist-note', text: CHECKLIST_NOTES[i] || '', style: 'flex-basis:100%; margin-top:6px; font-size:11.5px; color:var(--ink-3);' });
+          row.appendChild(note);
+        } else if (!detailOpen && existing) {
+          existing.remove();
+        }
+      });
+    });
+  }
+});
+</script>
+
+</body>
+</html>

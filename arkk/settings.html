@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<script>try{if(localStorage.getItem('arkk.nav.collapsed')==='1')document.documentElement.dataset.navCollapsed='1';}catch(e){}</script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Settings | Arkk Transfer Pricing</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  /* Chrome reconciliation: left sidebar is the ONE navigation; the topbar
+     segmented tab strip duplicated it and is removed. Collapse the topbar
+     grid from 3 tracks (nav | search | actions) to 2 (search | actions)
+     without touching shared.css (LAW, never edited). */
+  .topbar { grid-template-columns: 1fr auto !important; }
+</style>
+<link rel="stylesheet" href="arkk-nav.css" />
+<script defer src="arkk-data.js"></script>
+<script defer src="arkk.js"></script>
+<script defer src="arkk-nav.js"></script>
+<script defer src="arkk-chrome.js"></script>
+<style>
+  .settings-wrap { display: flex; flex-direction: column; gap: 20px; max-width: 760px; }
+  .settings-card .card-head { padding: 16px 20px; }
+  .settings-body { padding: 4px 20px 20px; display: flex; flex-direction: column; gap: 16px; }
+  .field-row { display: grid; grid-template-columns: 200px 1fr; align-items: center; gap: 16px; }
+  .field-row label { font-size: 13px; color: var(--ink-2); }
+  .field-row input[type="text"],
+  .field-row input[type="email"],
+  .field-row input[type="date"],
+  .field-row select {
+    width: 100%; box-sizing: border-box; padding: 9px 12px; font-size: 13.5px; font-family: inherit;
+    color: var(--ink); background: var(--bg-3); border: 1px solid var(--line); border-radius: 9px;
+  }
+  .field-row .static-value { font-size: 13.5px; color: var(--ink-3); padding: 9px 0; }
+  .toggle-row { display: flex; align-items: center; gap: 12px; }
+  .toggle-row .switch {
+    position: relative; width: 38px; height: 22px; border-radius: 12px; background: var(--bg-2);
+    border: 1px solid var(--line); cursor: pointer; flex: 0 0 auto;
+    transition: background var(--dur-micro) var(--ease-house);
+  }
+  .toggle-row .switch .knob {
+    position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%;
+    background: var(--surface); box-shadow: 0 1px 2px oklch(0% 0 0 / 0.15);
+    transition: transform var(--dur-ui) var(--ease-house);
+  }
+  .toggle-row .switch.on { background: var(--brand); border-color: var(--brand-2); }
+  .toggle-row .switch.on .knob { transform: translateX(16px); }
+  .settings-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 4px; }
+  .save-line { display: flex; justify-content: flex-end; gap: 10px; }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Primary (dashboard) navigation -->
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <div class="logo">fs</div>
+      <button class="ws-switch">
+        Northgate
+        <svg class="ico-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l5 5 5-5"/></svg>
+      </button>
+    </div>
+    <div class="sidebar-section">
+      <a class="nav-item" href="./">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 9.5V21h5v-7h4v7h5V9.5"/></svg>
+        <span class="nav-label">Dashboard</span>
+      </a>
+      <a class="nav-item" href="#" data-focus-search>
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <span class="nav-label">Search</span>
+        <span class="count">⌘K</span>
+      </a>
+      <a class="nav-item" href="#" data-quiet="Inbox">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l3-9h12l3 9v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1zM3 13h6l1 3h4l1-3h6"/></svg>
+        <span class="nav-label">Inbox</span>
+        <span class="count">3</span>
+      </a>
+    </div>
+    <div class="sidebar-section">
+      <div class="heading">Workspace</div>
+      <a class="nav-item" href="./">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 9.5V21h5v-7h4v7h5V9.5"/></svg>
+        <span class="nav-label">Overview</span>
+      </a>
+      <a class="nav-item" href="matrix.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h6v6H4zM14 6h6v6h-6zM4 16h6v4H4zM14 16h6v4h-6z"/></svg>
+        <span class="nav-label">Cost matrix</span>
+      </a>
+      <a class="nav-item" href="transfer-pricing.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h14M14 5l3 3-3 3M21 16H7M10 19l-3-3 3-3"/></svg>
+        <span class="nav-label">Benchmarking</span>
+      </a>
+      <a class="nav-item" href="hierarchy.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="6" rx="1.3"/><rect x="3" y="15" width="6" height="6" rx="1.3"/><rect x="15" y="15" width="6" height="6" rx="1.3"/><path d="M12 9v3M6 15v-3h12v3"/></svg>
+        <span class="nav-label">Hierarchy</span>
+      </a>
+      <a class="nav-item" href="runs.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M10.2 8.7l5.4 3.3-5.4 3.3z"/></svg>
+        <span class="nav-label">Runs</span>
+      </a>
+      <a class="nav-item" href="workflows.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h6m0 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM5 17h6m0 0a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM5 7v10"/></svg>
+        <span class="nav-label">Workflows</span>
+      </a>
+    </div>
+    <div class="sidebar-section">
+      <div class="heading">Data &amp; admin</div>
+      <a class="nav-item" href="data-sources.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>
+        <span class="nav-label">Data sources</span>
+      </a>
+      <a class="nav-item" href="reports.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>
+        <span class="nav-label">Reports</span>
+      </a>
+      <a class="nav-item active" href="settings.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .4 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.4 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .4-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.4-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.4H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.4l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.4 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        <span class="nav-label">Settings</span>
+      </a>
+    </div>
+    <div class="sidebar-foot">
+      <div class="user-chip">TH</div>
+      <div>
+        <div class="nm">Tom Heffes</div>
+        <div class="rl">Tax Lead | Northgate</div>
+      </div>
+      <a class="more" href="#" data-quiet="Account menu" title="Account menu">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Icon rail (legacy, hidden) -->
+  <aside class="rail" aria-label="Workspace">
+    <div class="logo">fs</div>
+    <nav class="nav">
+      <a href="./" class="item" title="Overview"><svg class="ico" viewBox="0 0 24 24"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg></a>
+      <a href="matrix.html" class="item" title="Cost matrix"><svg class="ico" viewBox="0 0 24 24"><path d="M4 6h6v6H4zM14 6h6v6h-6zM4 16h6v4H4zM14 16h6v4h-6z"/></svg></a>
+      <a href="hierarchy.html" class="item" title="Hierarchy"><svg class="ico" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="6" rx="1.3"/><rect x="3" y="15" width="6" height="6" rx="1.3"/><rect x="15" y="15" width="6" height="6" rx="1.3"/><path d="M12 9v3M6 15v-3h12v3"/></svg></a>
+      <a href="runs.html" class="item" title="Runs"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M10.2 8.7l5.4 3.3-5.4 3.3z"/></svg></a>
+      <a href="workflows.html" class="item" title="Workflows"><svg class="ico" viewBox="0 0 24 24"><path d="M5 7h6m0 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM5 17h6m0 0a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM5 7v10"/></svg></a>
+    </nav>
+    <div class="spacer"></div>
+    <a href="#" class="item" style="width: 40px; height: 40px;" title="Help" data-quiet="Help"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.4v.3M12 17h.01"/></svg></a>
+    <a href="#" class="item active" style="width: 40px; height: 40px;" title="Settings" data-quiet="Settings"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .4 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.4 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .4-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.4-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.4H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.4l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.4 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></a>
+    <div class="me" title="Tom Heffes">TH</div>
+  </aside>
+
+  <main class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="brand-block">
+        <div class="logo">fs</div>
+        <button class="ws-switch">Northgate <svg class="ico-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l5 5 5-5"/></svg></button>
+      </div>
+      <div class="search">
+        <svg class="ico-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input placeholder="Jump to anything | entity, CC, transaction, run…" />
+        <span class="kbd">⌘K</span>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn" title="History"><svg class="ico" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5M12 7v6l4 2"/></svg></button>
+        <button class="icon-btn" title="Notifications"><svg class="ico" viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9zM10 21a2 2 0 0 0 4 0"/></svg></button>
+        <div class="user-chip" title="Tom Heffes">TH</div>
+      </div>
+    </div>
+
+    <div class="page">
+
+      <nav class="crumbs">
+        <a href="./">Northgate</a>
+        <span class="sep">/</span>
+        <span class="here">Settings</span>
+      </nav>
+
+      <!-- Header -->
+      <div class="page-head" data-reveal>
+        <div>
+          <div class="page-eyebrow">
+            <span class="status-pill in-progress">Demo session</span>
+          </div>
+          <h1 class="page-title">Account &amp; <em>settings.</em></h1>
+          <p class="page-sub">Your profile, preferences and the Q4 2024 quarter configuration. Changes save to this browser and survive a reload.</p>
+        </div>
+      </div>
+
+      <div class="settings-wrap" data-reveal>
+
+        <!-- Profile -->
+        <div class="card flush settings-card" id="profile-card">
+          <div class="card-head">
+            <div class="card-title"><span class="num-badge">01</span> Profile</div>
+          </div>
+          <div class="settings-body">
+            <div class="field-row"><label for="f-name">Name</label><input type="text" id="f-name" /></div>
+            <div class="field-row"><label for="f-role">Role</label><input type="text" id="f-role" /></div>
+            <div class="field-row"><label for="f-email">Email</label><input type="email" id="f-email" /></div>
+            <div class="save-line"><span class="save-note muted" style="font-size:12px; margin-right:auto;"></span><button class="btn primary" id="save-profile" type="button" data-commit>Save profile</button></div>
+          </div>
+        </div>
+
+        <!-- Preferences -->
+        <div class="card flush settings-card" id="prefs-card">
+          <div class="card-head">
+            <div class="card-title"><span class="num-badge">02</span> Preferences</div>
+          </div>
+          <div class="settings-body">
+            <div class="field-row">
+              <label for="f-currency">Number format</label>
+              <select id="f-currency">
+                <option value="gbp">£ GBP</option>
+                <option value="eur">EUR</option>
+              </select>
+            </div>
+            <div class="field-row">
+              <label for="f-period">Default landing period</label>
+              <select id="f-period">
+                <option value="Q4 2024">Q4 2024</option>
+                <option value="Q3 2024">Q3 2024</option>
+              </select>
+            </div>
+            <div class="field-row">
+              <label for="f-reduce-motion">Reduced motion</label>
+              <div class="toggle-row">
+                <button type="button" class="switch" id="f-reduce-motion" role="switch" aria-checked="false"><span class="knob"></span></button>
+                <span class="muted" style="font-size:12px;">Overrides your OS setting for this app only</span>
+              </div>
+            </div>
+            <div class="save-line"><button class="btn primary" id="save-prefs" type="button" data-commit>Save preferences</button></div>
+          </div>
+        </div>
+
+        <!-- Quarter config -->
+        <div class="card flush settings-card" id="workspaces">
+          <div class="card-head">
+            <div class="card-title"><span class="num-badge">03</span> Quarter configuration</div>
+          </div>
+          <div class="settings-body">
+            <div class="field-row"><label for="f-quarter">Active quarter</label><div class="static-value" id="f-quarter">Q4 2024</div></div>
+            <div class="field-row"><label for="f-close-target">Close target date</label><input type="date" id="f-close-target" /></div>
+            <div class="field-row">
+              <label for="f-markup">Default markup rule</label>
+              <select id="f-markup">
+                <option value="markup-7">Cost +7%</option>
+                <option value="markup-5">Cost +5%</option>
+                <option value="at-cost">At cost</option>
+              </select>
+            </div>
+            <div class="field-row"><label for="f-approval">Approval routing</label><div class="static-value">Tax Lead</div></div>
+            <div class="save-line"><button class="btn primary" id="save-quarter" type="button" data-commit>Save quarter settings</button></div>
+          </div>
+        </div>
+
+        <div class="settings-footer">
+          <a href="#" class="btn ghost" id="reset-defaults" style="padding: 7px 14px; font-size: 12.5px;">Reset to defaults</a>
+          <span class="muted" style="font-size: 12px;">Settings save to this browser only.</span>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  'use strict';
+  if (!window.Arkk || !window.ArkkData) return;
+  var Arkk = window.Arkk, D = window.ArkkData;
+
+  var store = Arkk.store('arkk.settings.v1', function () {
+    return {
+      profile: { name: D.user.name, role: D.user.role, email: D.user.email },
+      prefs: { currency: 'gbp', period: D.quarter.label, reduceMotion: false },
+      quarter: { closeTarget: D.quarter.closeTarget, markup: 'markup-7' }
+    };
+  });
+
+  var nameEl = document.getElementById('f-name');
+  var roleEl = document.getElementById('f-role');
+  var emailEl = document.getElementById('f-email');
+  var currencyEl = document.getElementById('f-currency');
+  var periodEl = document.getElementById('f-period');
+  var reduceEl = document.getElementById('f-reduce-motion');
+  var closeTargetEl = document.getElementById('f-close-target');
+  var markupEl = document.getElementById('f-markup');
+
+  function paint() {
+    var s = store.get();
+    nameEl.value = s.profile.name;
+    roleEl.value = s.profile.role;
+    emailEl.value = s.profile.email;
+    currencyEl.value = s.prefs.currency;
+    periodEl.value = s.prefs.period;
+    reduceEl.classList.toggle('on', !!s.prefs.reduceMotion);
+    reduceEl.setAttribute('aria-checked', String(!!s.prefs.reduceMotion));
+    closeTargetEl.value = s.quarter.closeTarget;
+    markupEl.value = s.quarter.markup;
+  }
+  paint();
+
+  reduceEl.addEventListener('click', function () {
+    var on = !reduceEl.classList.contains('on');
+    reduceEl.classList.toggle('on', on);
+    reduceEl.setAttribute('aria-checked', String(on));
+  });
+
+  document.getElementById('save-profile').addEventListener('click', function () {
+    store.set({ profile: { name: nameEl.value || D.user.name, role: roleEl.value || D.user.role, email: emailEl.value || D.user.email } });
+    Arkk.toast('Profile saved.');
+    Arkk.activity.log({ kind: 'nav', title: 'Profile updated', href: 'settings.html' });
+  });
+
+  document.getElementById('save-prefs').addEventListener('click', function () {
+    store.set({ prefs: { currency: currencyEl.value, period: periodEl.value, reduceMotion: reduceEl.classList.contains('on') } });
+    Arkk.toast('Preferences saved.');
+  });
+
+  document.getElementById('save-quarter').addEventListener('click', function () {
+    store.set({ quarter: { closeTarget: closeTargetEl.value || D.quarter.closeTarget, markup: markupEl.value } });
+    Arkk.toast('Quarter settings saved.');
+  });
+
+  document.getElementById('reset-defaults').addEventListener('click', function (e) {
+    e.preventDefault();
+    store.reset();
+    paint();
+    Arkk.toast('Settings reset to defaults.');
+  });
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,997 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<script>try{if(localStorage.getItem('arkk.nav.collapsed')==='1')document.documentElement.dataset.navCollapsed='1';}catch(e){}</script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Benchmarking | Arkk Transfer Pricing</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  /* Chrome reconciliation: left sidebar is the ONE navigation; the topbar
+     segmented tab strip duplicated it and is removed. Collapse the topbar
+     grid from 3 tracks (nav | search | actions) to 2 (search | actions)
+     without touching shared.css (LAW, never edited). */
+  .topbar { grid-template-columns: 1fr auto !important; }
+</style>
+<link rel="stylesheet" href="arkk-nav.css" />
+<script defer src="arkk-data.js"></script>
+<script defer src="arkk.js"></script>
+<script defer src="arkk-nav.js"></script>
+<script defer src="arkk-chrome.js"></script>
+<style>
+  .strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 18px; }
+
+  /* =====================================================================
+     C. Method & range table
+     ===================================================================== */
+  .cls-table { display: flex; flex-direction: column; }
+  .cls-row { border-bottom: 1px solid var(--line-2); }
+  .cls-row:last-child { border-bottom: 0; }
+  .cls-row-head {
+    display: grid;
+    grid-template-columns: 1.6fr 1.05fr 85px 2.3fr 118px 18px;
+    gap: 18px;
+    align-items: center;
+    width: 100%;
+    padding: 18px 20px;
+    border: 0; background: transparent; text-align: left; cursor: pointer;
+    font: inherit; color: inherit;
+    transition: background var(--dur-ui) var(--ease-house);
+  }
+  .cls-row-head:hover { background: var(--bg-3); }
+  .cls-row.open .cls-row-head { background: var(--bg-3); }
+  .cls-row.below .cls-row-head,
+  .cls-row.below .cls-detail { background: linear-gradient(90deg, var(--peach-soft), transparent); }
+  .cls-row.below.open .cls-row-head { background: linear-gradient(90deg, var(--peach-soft), var(--bg-3)); }
+  .cls-name { font-size: 13px; font-weight: 500; color: var(--ink); }
+  .cls-method-sub { font-size: 12px; color: var(--ink-3); margin-top: 2px; }
+  .cls-party { font-size: 13px; color: var(--ink-2); font-weight: 500; }
+  .cls-party-sub { font-size: 12px; color: var(--ink-3); margin-top: 2px; }
+  .cls-value { font-family: "Geist Mono", monospace; font-size: 20px; font-weight: 500; color: var(--ink); letter-spacing: -0.02em; }
+  .cls-chevron { justify-self: end; color: var(--ink-4); display: flex; transition: transform var(--dur-ui) var(--ease-house); }
+  .cls-row.open .cls-chevron { transform: rotate(90deg); }
+
+  .cls-detail { padding: 0 20px 24px; display: none; }
+  .cls-row.open .cls-detail { display: block; }
+  .cls-detail-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 22px; padding-top: 6px; }
+  .cls-rationale { font-size: 13px; color: var(--ink-2); line-height: 1.6; background: var(--bg-2); border-radius: 10px; padding: 14px 16px; }
+  .cls-rationale b { color: var(--ink); font-weight: 500; display: block; margin-bottom: 4px; }
+  .bench-card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .bench-card .lab { font-family: "Geist Mono", monospace; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 8px; }
+  .bench-row { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; padding: 6px 0; border-bottom: 1px solid var(--line-2); color: var(--ink-2); }
+  .bench-row:last-child { border-bottom: 0; }
+  .bench-row .k { color: var(--ink-3); flex-shrink: 0; }
+  .bench-row .v { color: var(--ink); font-weight: 500; text-align: right; }
+
+  /* =====================================================================
+     .al-range — percentile tiles + range track (fills only, no colored
+     edge strokes). Used compact in the table row, big in the sim panel.
+     ===================================================================== */
+  .al-range { display: flex; flex-direction: column; }
+  .al-tiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 4px; }
+  .al-tile { text-align: center; }
+  .al-tile .al-tile-v { font-family: "Geist Mono", monospace; font-size: 13px; color: var(--ink); font-weight: 500; }
+  .al-tile .al-tile-l { font-size: 10px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+  .al-track { position: relative; height: 12px; background: var(--bg-2); border: 1px solid var(--line-2); border-radius: 6px; margin: 26px 6px 30px; }
+  .al-whisker { position: absolute; top: -2px; width: 2px; height: 16px; background: var(--ink-4); transform: translateX(-1px); }
+  .al-iqr { position: absolute; top: 0; height: 100%; background: var(--brand-tint); border-radius: 4px; }
+  .al-iqr.out { background: var(--peach-soft); }
+  .al-ref-tick { position: absolute; top: -2px; width: 2px; height: 16px; background: var(--ink-3); transform: translateX(-1px); }
+  .al-median { position: absolute; top: -3px; width: 2px; height: 18px; background: var(--ink-3); transform: translateX(-1px); }
+  .al-median-label { position: absolute; top: -19px; transform: translateX(-50%); font-family: "Geist Mono", monospace; font-size: 10px; color: var(--ink-3); }
+  .al-marker { position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 2px 6px oklch(20% 0.02 254 / 0.25), 0 0 0 3px var(--surface); }
+  .al-marker.mint { background: var(--mint); }
+  .al-marker.peach { background: var(--peach); }
+  .al-marker.coral { background: var(--coral); }
+  .al-marker-pill {
+    position: absolute; bottom: 22px; transform: translateX(-50%);
+    font-family: "Geist Mono", monospace; font-size: 11px; font-weight: 600;
+    padding: 3px 8px; border-radius: 6px; white-space: nowrap;
+    color: var(--ink); background: var(--surface);
+    box-shadow: 0 4px 10px oklch(20% 0.02 254 / 0.12), 0 0 0 1px var(--line-2);
+  }
+  .al-caption { font-size: 12px; color: var(--ink-3); margin-top: 2px; }
+  .al-range.big .al-track { height: 14px; margin: 34px 6px 34px; }
+  .al-range.big .al-tile-v { font-size: 17px; }
+  .al-range.big .al-tiles { margin-bottom: 6px; }
+
+  /* =====================================================================
+     D. Adjustment simulation — glass surface (hero-card recipe)
+     ===================================================================== */
+  .sim-panel {
+    background: linear-gradient(180deg, oklch(100% 0 0 / 0.7), oklch(100% 0 0 / 0.4));
+    backdrop-filter: saturate(160%) blur(24px);
+    -webkit-backdrop-filter: saturate(160%) blur(24px);
+    border: 1px solid oklch(100% 0 0 / 0.7);
+    border-radius: var(--r-lg);
+    padding: 28px 30px;
+    position: relative; overflow: hidden;
+    box-shadow: inset 0 1px 0 oklch(100% 0 0 / 0.5), 0 10px 30px oklch(54% 0.19 254 / 0.05), 0 1px 2px oklch(20% 0.02 254 / 0.03);
+    display: grid; grid-template-columns: 1.05fr 1fr; gap: 36px;
+    margin-top: 18px; scroll-margin-top: 100px;
+  }
+  .sim-panel::before {
+    content: ""; position: absolute; right: -100px; top: -100px; width: 320px; height: 320px; border-radius: 50%;
+    background: radial-gradient(closest-side, oklch(95% 0.05 60 / 0.55), transparent 70%);
+    pointer-events: none; z-index: 0;
+  }
+  .sim-panel > * { position: relative; z-index: 1; }
+  .sim-lab { font-family: "Geist Mono", monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 6px; }
+  .sim-left h3, .sim-right h3 { font-size: 15px; font-weight: 500; margin: 0 0 16px; letter-spacing: -0.01em; color: var(--ink); }
+
+  .sim-slider-wrap { margin: 26px 0 4px; }
+  input[type="range"].tp-slider {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 6px; border-radius: 4px;
+    background: var(--bg-2); border: 1px solid var(--line-2);
+    outline: none; cursor: pointer; display: block;
+  }
+  input[type="range"].tp-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%;
+    background: var(--brand); box-shadow: 0 2px 6px oklch(20% 0.02 254 / 0.3), 0 0 0 3px var(--surface);
+    cursor: grab; border: 0; margin-top: -7px;
+  }
+  input[type="range"].tp-slider:active::-webkit-slider-thumb { cursor: grabbing; }
+  input[type="range"].tp-slider::-moz-range-thumb {
+    width: 20px; height: 20px; border-radius: 50%; background: var(--brand);
+    box-shadow: 0 2px 6px oklch(20% 0.02 254 / 0.3), 0 0 0 3px var(--surface); cursor: grab; border: 0;
+  }
+  input[type="range"].tp-slider::-moz-range-track { height: 6px; background: var(--bg-2); border-radius: 4px; }
+
+  .sim-ticks { position: relative; height: 16px; margin-top: 6px; }
+  .sim-tick { position: absolute; top: 0; transform: translateX(-50%); font-family: "Geist Mono", monospace; font-size: 10px; color: var(--ink-3); }
+
+  .sim-readout { display: flex; flex-direction: column; gap: 16px; margin-top: 22px; }
+  .sim-stat .k { font-size: 12px; color: var(--ink-3); }
+  .sim-stat .v { font-family: "Geist Mono", monospace; font-size: 26px; font-weight: 500; color: var(--ink); margin-top: 3px; letter-spacing: -0.02em; }
+  .sim-stat .v.accent { color: var(--peach-ink); }
+  .sim-recon { font-size: 12px; color: var(--ink-3); line-height: 1.6; }
+  .sim-recon b { color: var(--ink-2); font-weight: 500; }
+  .sim-standard { font-size: 11px; color: var(--ink-4); margin-top: 4px; }
+  .sim-actions { margin-top: 22px; }
+
+  /* ---- flag preview card (inline confirm, not a bare toast) ---- */
+  .flag-preview {
+    margin-top: 16px; padding: 16px 18px; border-radius: 10px;
+    background: var(--bg-2); border: 1px solid var(--line);
+    display: none;
+  }
+  .flag-preview.open { display: block; }
+  .flag-preview .fp-title { font-size: 13px; font-weight: 500; color: var(--ink); margin-bottom: 8px; }
+  .flag-preview .fp-row { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; padding: 6px 0; border-bottom: 1px solid var(--line-2); }
+  .flag-preview .fp-row:last-of-type { border-bottom: 0; }
+  .flag-preview .fp-row .k { color: var(--ink-3); flex-shrink: 0; }
+  .flag-preview .fp-row .v { color: var(--ink-2); text-align: right; }
+  .flag-preview .fp-actions { display: flex; gap: 8px; margin-top: 12px; justify-content: flex-end; }
+
+  /* ---- entity rollup table ---- */
+  .rollup-name-block { display: flex; flex-direction: column; }
+  .rollup-code { font-size: 11px; color: var(--ink-3); font-weight: 400; margin-top: 1px; }
+  .rollup-foot-row td { background: var(--bg-2); color: var(--ink-3); font-size: 12px; }
+  .rollup-foot-row a { color: var(--brand); }
+
+  /* Page-local secondary-action treatment: paired secondary actions
+     (Cancel / Back / Reset) must read as buttons, not bare text.
+     Neutral low-alpha ink fill, standard hairline, same geometry as the
+     adjacent primary. Hover deepens the fill. */
+  .btn.soft {
+    background: oklch(18% 0.014 254 / 0.05);
+    border-color: var(--line);
+    color: var(--ink-2);
+    box-shadow: none;
+  }
+  .btn.soft:hover {
+    background: oklch(18% 0.014 254 / 0.09);
+    border-color: oklch(87% 0.012 254);
+    color: var(--ink);
+  }
+  .btn.soft:focus-visible {
+    outline: 2px solid oklch(54% 0.19 254 / 0.3);
+    outline-offset: 1px;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Primary (dashboard) navigation -->
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <div class="logo">fs</div>
+      <button class="ws-switch">
+        Northgate
+        <svg class="ico-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l5 5 5-5"/></svg>
+      </button>
+    </div>
+    <div class="sidebar-section">
+      <a class="nav-item" href="./">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 9.5V21h5v-7h4v7h5V9.5"/></svg>
+        <span class="nav-label">Dashboard</span>
+      </a>
+      <a class="nav-item" href="#" data-focus-search>
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <span class="nav-label">Search</span>
+        <span class="count">⌘K</span>
+      </a>
+      <a class="nav-item" href="#" data-quiet="Inbox">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l3-9h12l3 9v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1zM3 13h6l1 3h4l1-3h6"/></svg>
+        <span class="nav-label">Inbox</span>
+        <span class="count">3</span>
+      </a>
+    </div>
+    <div class="sidebar-section">
+      <div class="heading">Workspace</div>
+      <a class="nav-item" href="./">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 9.5V21h5v-7h4v7h5V9.5"/></svg>
+        <span class="nav-label">Overview</span>
+      </a>
+      <a class="nav-item" href="matrix.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h6v6H4zM14 6h6v6h-6zM4 16h6v4H4zM14 16h6v4h-6z"/></svg>
+        <span class="nav-label">Cost matrix</span>
+      </a>
+      <a class="nav-item active" href="transfer-pricing.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h14M14 5l3 3-3 3M21 16H7M10 19l-3-3 3-3"/></svg>
+        <span class="nav-label">Benchmarking</span>
+      </a>
+      <a class="nav-item" href="hierarchy.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="6" rx="1.3"/><rect x="3" y="15" width="6" height="6" rx="1.3"/><rect x="15" y="15" width="6" height="6" rx="1.3"/><path d="M12 9v3M6 15v-3h12v3"/></svg>
+        <span class="nav-label">Hierarchy</span>
+      </a>
+      <a class="nav-item" href="runs.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M10.2 8.7l5.4 3.3-5.4 3.3z"/></svg>
+        <span class="nav-label">Runs</span>
+      </a>
+      <a class="nav-item" href="workflows.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h6m0 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM5 17h6m0 0a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM5 7v10"/></svg>
+        <span class="nav-label">Workflows</span>
+      </a>
+    </div>
+    <div class="sidebar-section">
+      <div class="heading">Data &amp; admin</div>
+      <a class="nav-item" href="data-sources.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>
+        <span class="nav-label">Data sources</span>
+      </a>
+      <a class="nav-item" href="reports.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>
+        <span class="nav-label">Reports</span>
+      </a>
+      <a class="nav-item" href="#" data-quiet="Settings">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .4 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.4 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .4-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.4-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.4H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.4l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.4 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        <span class="nav-label">Settings</span>
+      </a>
+    </div>
+    <div class="sidebar-foot">
+      <div class="user-chip">TH</div>
+      <div>
+        <div class="nm">Tom Heffes</div>
+        <div class="rl">Tax Lead | Northgate</div>
+      </div>
+      <a class="more" href="#" data-quiet="Account menu" title="Account menu">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Icon rail (legacy, hidden) -->
+  <aside class="rail" aria-label="Workspace">
+    <div class="logo">fs</div>
+    <nav class="nav">
+      <a href="./" class="item" title="Overview"><svg class="ico" viewBox="0 0 24 24"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg></a>
+      <a href="matrix.html" class="item" title="Cost matrix"><svg class="ico" viewBox="0 0 24 24"><path d="M4 6h6v6H4zM14 6h6v6h-6zM4 16h6v4H4zM14 16h6v4h-6z"/></svg></a>
+      <a href="hierarchy.html" class="item" title="Hierarchy"><svg class="ico" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="6" rx="1.3"/><rect x="3" y="15" width="6" height="6" rx="1.3"/><rect x="15" y="15" width="6" height="6" rx="1.3"/><path d="M12 9v3M6 15v-3h12v3"/></svg></a>
+      <a href="runs.html" class="item" title="Runs"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M10.2 8.7l5.4 3.3-5.4 3.3z"/></svg></a>
+      <a href="workflows.html" class="item" title="Workflows"><svg class="ico" viewBox="0 0 24 24"><path d="M5 7h6m0 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM5 17h6m0 0a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM5 7v10"/></svg></a>
+    </nav>
+    <div class="spacer"></div>
+    <a href="#" class="item" style="width: 40px; height: 40px;" title="Help" data-quiet="Help"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.4v.3M12 17h.01"/></svg></a>
+    <a href="#" class="item" style="width: 40px; height: 40px;" title="Settings" data-quiet="Settings"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .4 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.4 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .4-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.4-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.4H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.4l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.4 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></a>
+    <div class="me" title="Tom Heffes">TH</div>
+  </aside>
+
+  <main class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="brand-block">
+        <div class="logo">fs</div>
+        <button class="ws-switch">Northgate <svg class="ico-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l5 5 5-5"/></svg></button>
+      </div>
+      <div class="search">
+        <svg class="ico-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input placeholder="Find a class, entity or benchmark…" />
+        <span class="kbd">⌘K</span>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn" title="History"><svg class="ico" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5M12 7v6l4 2"/></svg></button>
+        <button class="icon-btn" title="Notifications"><svg class="ico" viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9zM10 21a2 2 0 0 0 4 0"/></svg></button>
+        <div class="user-chip" title="Tom Heffes">TH</div>
+      </div>
+    </div>
+
+    <div class="page">
+
+      <nav class="crumbs">
+        <a href="./">Transfer Pricing</a>
+        <span class="sep">/</span>
+        <a href="./">Q4 2024</a>
+        <span class="sep">/</span>
+        <span class="here">Benchmarking</span>
+      </nav>
+
+      <!-- A. Page head -->
+      <div class="page-head" data-reveal>
+        <div>
+          <div class="page-eyebrow">
+            <span class="status-pill in-progress">Q4 2024 | dry</span>
+            <span>5 transaction classes | 4 in range | 1 below range</span>
+          </div>
+          <h1 class="page-title">Arm's-length method &amp; <em>ranges.</em></h1>
+          <p class="page-sub">The method behind every intercompany price. Each transaction class is tested against an arm's-length interquartile range from its benchmarking set. One class is below range and needs a true-up before Q4 posts.</p>
+        </div>
+        <div class="page-meta">
+          <button class="btn" id="tp-export-btn">Export</button>
+          <button class="btn" id="tp-refresh-btn">Refresh benchmarking</button>
+          <a href="#sim" class="btn primary" id="model-adj-btn">Model an adjustment</a>
+        </div>
+      </div>
+
+      <!-- B. Stat strip -->
+      <div class="strip" data-reveal>
+        <div class="score-card">
+          <div class="label">Classes tested</div>
+          <div class="v" data-count="5"></div>
+          <div class="sub">across 5 methods</div>
+        </div>
+        <div class="score-card" style="border-color: var(--mint-line); background: linear-gradient(180deg, var(--mint-soft), var(--surface));">
+          <div class="label" style="color: var(--mint-ink);">In range</div>
+          <div class="v" style="color: var(--mint-ink);" data-count="4"></div>
+          <div class="sub" style="color: var(--mint-ink);">within IQR</div>
+        </div>
+        <div class="score-card">
+          <div class="label">Below range</div>
+          <div class="v" data-count="1"></div>
+          <div class="sub">Legacy distribution</div>
+        </div>
+        <div class="score-card">
+          <div class="label">Modelled uplift</div>
+          <div class="v mono" data-count="28.9" data-count-decimals="1" data-count-prefix="£ "><span class="unit">m</span></div>
+          <div class="sub">TP-Q4-2024-13</div>
+        </div>
+      </div>
+
+      <!-- C. Method & range table -->
+      <div class="card flush" data-reveal style="margin-bottom: 18px;">
+        <div class="card-head">
+          <div class="card-title"><span class="num-badge">CLASSES</span> Method &amp; arm's-length range</div>
+        </div>
+        <div class="cls-table" id="cls-table"></div>
+      </div>
+
+      <!-- D. Adjustment simulation -->
+      <div class="sim-panel" id="sim" data-reveal>
+        <div class="sim-left">
+          <div class="sim-lab">LEGACY DISTRIBUTION | CLASS 4</div>
+          <h3>Tested margin vs arm's-length range</h3>
+          <div id="sim-range-slot"></div>
+        </div>
+        <div class="sim-right">
+          <div class="sim-lab">WHAT-IF</div>
+          <h3>Model an adjustment</h3>
+          <div class="sim-slider-wrap">
+            <input type="range" class="tp-slider" id="tp-slider" min="1.9" max="9.4" step="0.1" value="4.7" aria-label="Projected tested margin" />
+            <div class="sim-ticks" id="sim-ticks"></div>
+          </div>
+          <div class="sim-readout">
+            <div class="sim-stat">
+              <div class="k">Projected tested margin</div>
+              <div class="v" id="sim-margin">4.7%</div>
+            </div>
+            <div class="sim-stat">
+              <div class="k">Projected true-up on £45.0m Legacy net-sales base</div>
+              <div class="v accent" id="sim-trueup">+£1.3m</div>
+            </div>
+            <div class="sim-recon" id="sim-recon"></div>
+            <div class="sim-standard">Outside the range, OECD 3.57/3.62 and HMRC default to the median as the adjustment point.</div>
+          </div>
+          <div class="sim-actions">
+            <button class="btn primary" type="button" id="flag-btn-d">Flag &amp; create exception</button>
+          </div>
+          <div class="flag-preview" id="flag-preview"></div>
+        </div>
+      </div>
+
+      <!-- E. Per-entity rollup -->
+      <div class="card flush" data-reveal style="margin-top: 18px;">
+        <div class="card-head">
+          <div class="card-title"><span class="num-badge">ENTITIES</span> Tested-party rollup</div>
+        </div>
+        <table class="data">
+          <thead>
+            <tr>
+              <th>Entity</th>
+              <th>Group</th>
+              <th>Primary method</th>
+              <th style="text-align: right;">Tested value</th>
+              <th>Status</th>
+              <th style="text-align: right;">Q4 adj</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><a href="entity?e=connect-finco" class="name"><span class="ent-av">CF</span><span class="rollup-name-block">CONNECT FINCO (LUX)<span class="rollup-code">LU-2291</span></span></a></td>
+              <td>Principal</td>
+              <td>CUP royalty / TNMM</td>
+              <td class="num">6.5%</td>
+              <td><span class="status-pill done">In range</span></td>
+              <td class="num">£ 7.9m</td>
+            </tr>
+            <tr>
+              <td><a href="entity?e=northgate-solutions" class="name"><span class="ent-av alt">IS</span><span class="rollup-name-block">NORTHGATE SOLUTIONS doo<span class="rollup-code">RS-4410</span></span></a></td>
+              <td>Routine</td>
+              <td>TNMM NCPM</td>
+              <td class="num">7.4%</td>
+              <td><span class="status-pill done">In range</span></td>
+              <td class="num">£ 6.0m</td>
+            </tr>
+            <tr>
+              <td><a href="entity?e=connect-bidco" class="name"><span class="ent-av alt2">CB</span><span class="rollup-name-block">Connect Bidco<span class="rollup-code">UK-1187</span></span></a></td>
+              <td>Principal</td>
+              <td>Low value-add 5%</td>
+              <td class="num">5.0%</td>
+              <td><span class="status-pill in-progress">Safe harbour</span></td>
+              <td class="num">£ 3.4m</td>
+            </tr>
+            <tr>
+              <td><a href="entity?e=northgate-dooel" class="name"><span class="ent-av alt3">DK</span><span class="rollup-name-block">NORTHGATE DOOEL (SKOPJE)<span class="rollup-code">MK-2201</span></span></a></td>
+              <td>Routine</td>
+              <td>At cost</td>
+              <td class="num">0.0%</td>
+              <td><span class="status-pill done">In range (at-cost policy)</span></td>
+              <td class="num">£ 0.0m</td>
+            </tr>
+            <tr>
+              <td><a href="entity?e=new-wave" class="name"><span class="ent-av">NW</span><span class="rollup-name-block">New Wave Broadband<span class="rollup-code">IE-3120</span></span></a></td>
+              <td>Routine</td>
+              <td>TNMM NCPM</td>
+              <td class="num">7.1%</td>
+              <td><span class="status-pill done">In range</span></td>
+              <td class="num">£ 2.0m</td>
+            </tr>
+            <tr class="rollup-foot-row">
+              <td colspan="6">Legacy group | Distribution TNMM | 1.9% | Below range | +£1.3m indicated | <a href="#sim">view benchmarking</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- F. Footer -->
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 24px 0 0; margin-top: 24px; border-top: 1px solid var(--line);">
+        <a href="./" class="btn ghost"><svg class="ico" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg> Back to overview</a>
+        <a href="#" id="tp-reset-demo" class="muted" style="font-size: 12px;">Reset demo</a>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  'use strict';
+  var el = Arkk.el, icon = Arkk.icon, clear = Arkk.clear;
+
+  function pct(v, min, max) {
+    return Math.max(0, Math.min(100, ((v - min) / (max - min)) * 100));
+  }
+  function fmt1(n) { return n.toFixed(1); }
+
+  /* -----------------------------------------------------------------------
+     Class table — single source of truth. Contributions reconcile to the
+     £28.9m TP-Q4-2024-13 total (12.4 + 7.2 + 4.1 + 3.2 + 2.0), never to the
+     sum of the top-5 named entities.
+     ----------------------------------------------------------------------- */
+  var CLASSES = [
+    {
+      id: 'c1', num: 1, name: 'Intra-group support services',
+      method: 'TNMM | Net cost-plus markup',
+      testedParty: 'NORTHGATE SOLUTIONS doo', testedCode: 'RS-4410',
+      unit: '%', domainMin: 0, domainMax: 13,
+      min: 2.4, q1: 4.6, med: 6.7, q3: 8.9, max: 11.9, marker: 7.4,
+      status: 'in-range', contribution: 12.4,
+      rationale: 'Routine service provider tested on net cost-plus markup; +7% policy lands at 7.4% realized, inside the IQR upper half. Textbook TNMM.',
+      bench: { count: '18 comparables', scope: 'Pan-European business-support providers', pli: 'NCPM', searched: 'FY2023', validThrough: 'FY2025', rejected: 'independence < 75%, loss-making 2/3 yrs, dissimilar function' }
+    },
+    {
+      id: 'c2', num: 2, name: 'IP licensing & royalties',
+      method: 'CUP | Royalty rate on net sales',
+      testedParty: 'CONNECT FINCO (LUX)', testedCode: 'LU-2291',
+      unit: '%', domainMin: 0, domainMax: 10,
+      min: 3.0, q1: 5.0, med: 6.0, q3: 7.5, max: 9.0, marker: 6.5,
+      status: 'in-range', contribution: 7.2,
+      rationale: 'IP owner licenses IP; royalty rate benchmarked by external CUP against comparable uncontrolled licences. 6.5% sits inside the IQR.',
+      bench: { count: '11 comparable uncontrolled licences', scope: 'Global software/IP licences', pli: 'Royalty rate', searched: 'FY2023', validThrough: 'FY2025', rejected: 'non-comparable IP, related-party terms' }
+    },
+    {
+      id: 'c3', num: 3, name: 'Low value-adding services',
+      method: 'OECD simplified | 5% cost mark-up',
+      testedParty: 'Central services', testedCode: 'Connect Bidco | UK-1187',
+      unit: '%', domainMin: 0, domainMax: 10,
+      safeHarbour: true, marker: 5.0,
+      status: 'safe', contribution: 4.1,
+      rationale: 'OECD Ch. VII low value-adding services elective: fixed 5% cost mark-up, no benchmarking required.'
+    },
+    {
+      id: 'c4', num: 4, name: 'Distribution & marketing',
+      method: 'TNMM | Operating margin (return on sales)',
+      testedParty: 'Legacy group', testedCode: 'Distribution & marketing services',
+      unit: '%', domainMin: 0, domainMax: 10,
+      min: 0.8, q1: 3.2, med: 4.7, q3: 6.9, max: 9.4, marker: 1.9,
+      status: 'below', contribution: 3.2,
+      rationale: 'Routine distributor tested on operating margin (return on sales). 1.9% sits below Q1 (3.2%), under-rewarded, indicating an upward true-up.',
+      bench: { count: '15 comparables', scope: 'EU connectivity distributors', pli: 'Operating margin', searched: 'FY2022', validThrough: 'FY2024 (ageing)', rejected: 'manufacturing function, < 3 yrs data' }
+    },
+    {
+      id: 'c5', num: 5, name: 'Treasury & intra-group financing',
+      method: 'CUP | Intra-group interest spread',
+      testedParty: 'Group treasury', testedCode: 'Connect Finco | LU-2291',
+      unit: 'bps', domainMin: 40, domainMax: 190,
+      min: 60, q1: 95, med: 120, q3: 140, max: 175, marker: 118,
+      status: 'in-range', contribution: 2.0,
+      rationale: 'Intra-group financing spread tested by CUP against third-party debt, demonstrating the range viz handles a non-margin metric (basis points).',
+      bench: { count: '9 comparable issuances', scope: 'EU corporate debt, BBB band', pli: 'Interest spread', searched: 'FY2023', validThrough: '–', rejected: '–' }
+    }
+  ];
+
+  function fmtValue(cls, v) {
+    return cls.unit === 'bps' ? (Math.round(v) + ' bps') : (fmt1(v) + '%');
+  }
+
+  function statusMeta(cls) {
+    if (cls.status === 'below') return { pillCls: 'warn', label: 'Below range' };
+    if (cls.status === 'safe') return { pillCls: 'in-progress', label: 'Safe harbour' };
+    if (cls.status === 'above') return { pillCls: 'warn', label: 'Above range' };
+    return { pillCls: 'done', label: 'In range' };
+  }
+
+  /* -----------------------------------------------------------------------
+     .al-range component — fills only, no colored edge strokes. Width/left
+     animate once on reveal via the shared [data-to] pass in arkk.js;
+     prefers-reduced-motion renders final positions immediately.
+     ----------------------------------------------------------------------- */
+  function appendMarker(track, cls) {
+    var markerP = pct(cls.marker, cls.domainMin, cls.domainMax);
+    var color = cls.status === 'below' ? 'peach' : (cls.status === 'above' ? 'coral' : 'mint');
+    var dot = el('div', {
+      cls: 'al-marker ' + color, style: 'left:0%;',
+      attrs: { 'data-to': markerP.toFixed(1) + '%', 'data-prop': 'left' }
+    });
+    var pillEl = el('div', {
+      cls: 'al-marker-pill', text: fmtValue(cls, cls.marker), style: 'left:0%;',
+      attrs: { 'data-to': markerP.toFixed(1) + '%', 'data-prop': 'left' }
+    });
+    track.appendChild(dot);
+    track.appendChild(pillEl);
+  }
+
+  function buildTrack(cls) {
+    var track = el('div', { cls: 'al-track' });
+
+    if (cls.safeHarbour) {
+      var tickP = pct(cls.marker, cls.domainMin, cls.domainMax);
+      track.appendChild(el('div', { cls: 'al-ref-tick', style: 'left:' + tickP.toFixed(1) + '%;' }));
+      appendMarker(track, cls);
+      return track;
+    }
+
+    var minP = pct(cls.min, cls.domainMin, cls.domainMax);
+    var maxP = pct(cls.max, cls.domainMin, cls.domainMax);
+    track.appendChild(el('div', { cls: 'al-whisker', style: 'left:' + minP.toFixed(1) + '%;' }));
+    track.appendChild(el('div', { cls: 'al-whisker', style: 'left:' + maxP.toFixed(1) + '%;' }));
+
+    var q1p = pct(cls.q1, cls.domainMin, cls.domainMax);
+    var q3p = pct(cls.q3, cls.domainMin, cls.domainMax);
+    var iqr = el('div', {
+      cls: 'al-iqr' + (cls.status === 'below' ? ' out' : ''),
+      style: 'left:' + q1p.toFixed(1) + '%; width:0%;',
+      attrs: { 'data-to': (q3p - q1p).toFixed(1) + '%', 'data-prop': 'width' }
+    });
+    track.appendChild(iqr);
+
+    var medp = pct(cls.med, cls.domainMin, cls.domainMax);
+    track.appendChild(el('div', { cls: 'al-median', style: 'left:' + medp.toFixed(1) + '%;' }));
+    track.appendChild(el('div', { cls: 'al-median-label', text: 'med', style: 'left:' + medp.toFixed(1) + '%;' }));
+
+    appendMarker(track, cls);
+    return track;
+  }
+
+  function buildTiles(cls) {
+    var wrap = el('div', { cls: 'al-tiles' });
+    [['min', cls.min], ['Q1', cls.q1], ['median', cls.med], ['Q3', cls.q3], ['max', cls.max]].forEach(function (pair) {
+      var tile = el('div', { cls: 'al-tile' });
+      tile.appendChild(el('div', { cls: 'al-tile-v', text: fmtValue(cls, pair[1]) }));
+      tile.appendChild(el('div', { cls: 'al-tile-l', text: pair[0] }));
+      wrap.appendChild(tile);
+    });
+    return wrap;
+  }
+
+  function buildRange(cls, opts) {
+    opts = opts || {};
+    var wrap = el('div', { cls: 'al-range' + (opts.big ? ' big' : '') });
+    if (opts.tiles && !cls.safeHarbour) wrap.appendChild(buildTiles(cls));
+    wrap.appendChild(buildTrack(cls));
+    if (cls.safeHarbour) wrap.appendChild(el('div', { cls: 'al-caption', text: 'Safe harbour | no range tested' }));
+    return wrap;
+  }
+
+  /* -----------------------------------------------------------------------
+     C. Method & range table
+     ----------------------------------------------------------------------- */
+  function buildBenchCard(cls) {
+    var card = el('div', { cls: 'bench-card' });
+    card.appendChild(el('div', { cls: 'lab', text: 'BENCHMARKING SET' }));
+    if (cls.safeHarbour) {
+      var r = el('div', { cls: 'bench-row' });
+      r.appendChild(el('span', { cls: 'k', text: 'Status' }));
+      r.appendChild(el('span', { cls: 'v', text: 'Not required | safe harbour' }));
+      card.appendChild(r);
+      return card;
+    }
+    [
+      ['Comparables', cls.bench.count],
+      ['Scope', cls.bench.scope],
+      ['PLI', cls.bench.pli],
+      ['Searched', cls.bench.searched],
+      ['Valid through', cls.bench.validThrough],
+      ['Rejected on', cls.bench.rejected]
+    ].forEach(function (pair) {
+      var row = el('div', { cls: 'bench-row' });
+      row.appendChild(el('span', { cls: 'k', text: pair[0] }));
+      row.appendChild(el('span', { cls: 'v', text: pair[1] }));
+      card.appendChild(row);
+    });
+    return card;
+  }
+
+  var openRowId = 'c4';
+
+  function renderOpenState() {
+    CLASSES.forEach(function (c) {
+      var rowEl = document.getElementById('row-' + c.id);
+      if (!rowEl) return;
+      var isOpen = c.id === openRowId;
+      rowEl.classList.toggle('open', isOpen);
+      var head = rowEl.querySelector('.cls-row-head');
+      if (head) head.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    });
+  }
+
+  function toggleRow(id) {
+    openRowId = (openRowId === id) ? null : id;
+    renderOpenState();
+  }
+
+  function buildRow(cls) {
+    var row = el('div', { cls: 'cls-row' + (cls.status === 'below' ? ' below' : '') });
+    row.id = 'row-' + cls.id;
+
+    var head = el('button', { cls: 'cls-row-head', type: 'button', attrs: { 'aria-expanded': 'false' } });
+
+    var nameWrap = el('div');
+    nameWrap.appendChild(el('div', { cls: 'cls-name', text: '#' + cls.num + ' | ' + cls.name }));
+    nameWrap.appendChild(el('div', { cls: 'cls-method-sub', text: cls.method }));
+
+    var partyWrap = el('div');
+    partyWrap.appendChild(el('div', { cls: 'cls-party', text: cls.testedParty }));
+    partyWrap.appendChild(el('div', { cls: 'cls-party-sub', text: cls.testedCode }));
+
+    var valueWrap = el('div', { cls: 'cls-value', text: fmtValue(cls, cls.marker) });
+
+    var rangeWrap = buildRange(cls, { tiles: false });
+
+    var statusWrap = el('div');
+    var meta = statusMeta(cls);
+    statusWrap.appendChild(el('span', { cls: 'status-pill ' + meta.pillCls, text: meta.label }));
+
+    var chevron = el('span', { cls: 'cls-chevron' });
+    chevron.appendChild(icon('M9 6l6 6-6 6', { cls: 'ico-sm' }));
+
+    head.appendChild(nameWrap);
+    head.appendChild(partyWrap);
+    head.appendChild(valueWrap);
+    head.appendChild(rangeWrap);
+    head.appendChild(statusWrap);
+    head.appendChild(chevron);
+    row.appendChild(head);
+
+    var detail = el('div', { cls: 'cls-detail' });
+    var grid = el('div', { cls: 'cls-detail-grid' });
+
+    var rationale = el('div', { cls: 'cls-rationale' });
+    rationale.appendChild(el('b', { text: 'Why this method' }));
+    rationale.appendChild(document.createTextNode(cls.rationale));
+    grid.appendChild(rationale);
+    grid.appendChild(buildBenchCard(cls));
+    detail.appendChild(grid);
+
+    if (cls.id === 'c4') {
+      var flagWrap = el('div', { style: 'margin-top: 16px;' });
+      flagWrap.appendChild(el('button', { cls: 'btn primary', type: 'button', text: 'Flag & create exception', attrs: { id: 'flag-btn-c' } }));
+      detail.appendChild(flagWrap);
+    }
+
+    row.appendChild(detail);
+    head.addEventListener('click', function () { toggleRow(cls.id); });
+
+    return row;
+  }
+
+  var tableEl = document.getElementById('cls-table');
+  CLASSES.forEach(function (c) { tableEl.appendChild(buildRow(c)); });
+  renderOpenState();
+
+  /* -----------------------------------------------------------------------
+     D. Adjustment simulation — the what-if for Legacy distribution (c4).
+     true-up = (target - 1.9) * 45.0 / 100, on Legacy net-sales base £45.0m.
+     Default snap = median (OECD 3.57/3.62 / HMRC default adjustment point).
+     ----------------------------------------------------------------------- */
+  var legacy = CLASSES[3]; // c4
+  var BASE = 45.0;
+  var CURRENT = 1.9;
+  var TOTAL_UPLIFT = 28.9;
+  var SNAP_POINTS = [legacy.q1, legacy.med, legacy.q3]; // 3.2, 4.7, 6.9
+  var SNAP_THRESHOLD = 0.15;
+
+  document.getElementById('sim-range-slot').appendChild(buildRange(legacy, { big: true, tiles: true }));
+
+  var simTicksEl = document.getElementById('sim-ticks');
+  [['Q1', legacy.q1], ['median', legacy.med], ['Q3', legacy.q3]].forEach(function (pair) {
+    var p = pct(pair[1], legacy.marker, legacy.max);
+    simTicksEl.appendChild(el('div', { cls: 'sim-tick', text: pair[0], style: 'left:' + p.toFixed(1) + '%;' }));
+  });
+
+  var slider = document.getElementById('tp-slider');
+  var marginEl = document.getElementById('sim-margin');
+  var trueupEl = document.getElementById('sim-trueup');
+  var reconEl = document.getElementById('sim-recon');
+
+  function updateSim(rawValue) {
+    var v = parseFloat(rawValue);
+    var snapped = v;
+    for (var i = 0; i < SNAP_POINTS.length; i++) {
+      if (Math.abs(v - SNAP_POINTS[i]) < SNAP_THRESHOLD) { snapped = SNAP_POINTS[i]; break; }
+    }
+    if (snapped !== v) slider.value = snapped;
+
+    var trueUp = (snapped - CURRENT) * BASE / 100;
+    var total = TOTAL_UPLIFT + trueUp;
+
+    marginEl.textContent = fmt1(snapped) + '%';
+    trueupEl.textContent = (trueUp >= 0 ? '+' : '') + '£' + trueUp.toFixed(1) + 'm';
+
+    clear(reconEl);
+    reconEl.appendChild(document.createTextNode('Incremental to the £' + fmt1(TOTAL_UPLIFT) + 'm in TP-Q4-2024-13. Posting at ' + fmt1(snapped) + '% would raise modelled uplift to '));
+    reconEl.appendChild(el('b', { text: '£' + total.toFixed(1) + 'm' }));
+    reconEl.appendChild(document.createTextNode('.'));
+  }
+
+  slider.addEventListener('input', function () { updateSim(slider.value); });
+  updateSim(slider.value);
+
+  /* -----------------------------------------------------------------------
+     "Model an adjustment" — scroll to §D, respecting reduced motion.
+     ----------------------------------------------------------------------- */
+  document.getElementById('model-adj-btn').addEventListener('click', function (e) {
+    e.preventDefault();
+    var target = document.getElementById('sim');
+    if (target) target.scrollIntoView({ behavior: Arkk.reduce ? 'auto' : 'smooth', block: 'start' });
+  });
+  var footFlagLink = document.querySelector('.rollup-foot-row a[href="#sim"]');
+  if (footFlagLink) footFlagLink.addEventListener('click', function (e) {
+    e.preventDefault();
+    var target = document.getElementById('sim');
+    if (target) target.scrollIntoView({ behavior: Arkk.reduce ? 'auto' : 'smooth', block: 'start' });
+  });
+
+  /* -----------------------------------------------------------------------
+     Micro-flow: flag Class 4 -> create exception -> route to
+     exceptions.html. Preview-before-side-effect: an inline confirm card,
+     not a bare toast. Emits the exact canon exception shape.
+     ----------------------------------------------------------------------- */
+  var EXCEPTION_OBJ = {
+    id: 'tp-legacy-dist-q4', kind: 'txn', code: 'TP-LEG-DIST',
+    title: 'Tested margin below arm’s-length range', tag: 'OUT OF RANGE', status: 'New',
+    meta: 'Legacy distribution | Legacy group | 1.9% vs 3.2–6.9% IQR',
+    found: 'Legacy group’s realized operating margin of 1.9% falls below the arm’s-length interquartile range (Q1 3.2%, median 4.7%). OECD 3.57/3.62 indicate an upward adjustment to the median.',
+    scope: 'Distribution & marketing services | Legacy group | £45.0m net sales | +£1.3m true-up to median',
+    options: [
+      { pill: 'markup-7', label: 'Adjust to median 4.7% | +£1.3m', desc: 'OECD default point; maximises likelihood of an arm’s-length result', selected: true },
+      { pill: 'markup-5', label: 'Adjust to Q1 3.2% | +£0.6m', desc: 'Lower-quartile entry point of the range' },
+      { pill: 'at-cost', label: 'Refresh benchmarking set first', desc: 'Comparable search is FY2022 | re-run before adjusting' },
+      { pill: 'ignore', label: 'Document and accept', desc: 'Attach rationale, revisit next close' }
+    ]
+  };
+
+  function readPending() {
+    try { return JSON.parse(localStorage.getItem('arkk_pending_exceptions') || '[]'); }
+    catch (e) { return []; }
+  }
+
+  function buildFlagPreview() {
+    var wrap = document.getElementById('flag-preview');
+    clear(wrap);
+    wrap.appendChild(el('div', { cls: 'fp-title', text: 'Create exception: Tested margin below arm’s-length range' }));
+
+    [
+      ['Scope', EXCEPTION_OBJ.scope],
+      ['Recommended', 'Adjust to median 4.7% | +£1.3m'],
+      ['Routes to', 'Exceptions for triage']
+    ].forEach(function (pair) {
+      var r = el('div', { cls: 'fp-row' });
+      r.appendChild(el('span', { cls: 'k', text: pair[0] }));
+      r.appendChild(el('span', { cls: 'v', text: pair[1] }));
+      wrap.appendChild(r);
+    });
+
+    var actions = el('div', { cls: 'fp-actions' });
+    var cancelBtn = el('button', { cls: 'btn soft', type: 'button', text: 'Cancel' });
+    var createBtn = el('button', { cls: 'btn primary', type: 'button', text: 'Create exception' });
+    actions.appendChild(cancelBtn);
+    actions.appendChild(createBtn);
+    wrap.appendChild(actions);
+
+    cancelBtn.addEventListener('click', function () { wrap.classList.remove('open'); });
+    createBtn.addEventListener('click', function () { commitException(createBtn); });
+  }
+
+  function openFlagPreview() {
+    var wrap = document.getElementById('flag-preview');
+    wrap.classList.add('open');
+    wrap.scrollIntoView({ behavior: Arkk.reduce ? 'auto' : 'smooth', block: 'center' });
+  }
+
+  function commitException(btn) {
+    try {
+      var pend = readPending();
+      if (!pend.some(function (x) { return x.id === EXCEPTION_OBJ.id; })) pend.push(EXCEPTION_OBJ);
+      localStorage.setItem('arkk_pending_exceptions', JSON.stringify(pend));
+    } catch (e) { /* storage unavailable - proceed to nav anyway, graceful-failure path */ }
+
+    if (!Arkk.reduce) {
+      Arkk.commit(btn);
+      setTimeout(function () { window.location.href = 'exceptions?new=tp-legacy-dist-q4'; }, 320);
+    } else {
+      window.location.href = 'exceptions?new=tp-legacy-dist-q4';
+    }
+  }
+
+  buildFlagPreview();
+
+  var alreadyFlagged = readPending().some(function (x) { return x.id === EXCEPTION_OBJ.id; });
+
+  function wireFlagButton(id) {
+    var b = document.getElementById(id);
+    if (!b) return;
+    if (alreadyFlagged) {
+      b.textContent = 'View in Exceptions';
+      b.classList.remove('primary');
+      b.classList.add('ghost');
+      b.addEventListener('click', function () { window.location.href = 'exceptions?new=tp-legacy-dist-q4'; });
+    } else {
+      b.addEventListener('click', openFlagPreview);
+    }
+  }
+  wireFlagButton('flag-btn-d');
+  wireFlagButton('flag-btn-c');
+
+  /* -----------------------------------------------------------------------
+     WAVE 2 — header Export + Refresh benchmarking.
+     Export: real CSV of the class/method/range table.
+     Refresh: re-run the comparable search for the 3 non-fixed classes
+     (c1, c2, c5). c3 is a fixed OECD safe-harbour rate — refreshing a
+     mandated 5% mark-up would be dishonest, not a stub. c4 (Legacy
+     distribution) anchors the live "Model an adjustment" slider below and
+     is the class already flagged for review, so it is held steady rather
+     than silently moving the number a reviewer is mid-triage on — the
+     scope narrowing is disclosed in the toast, not hidden. In-memory only
+     (a reload restores the original seed — reversible), plus an explicit
+     Undo affordance for same-session reversal.
+     ----------------------------------------------------------------------- */
+  function rangeLabel(cls) {
+    if (cls.safeHarbour) return 'Not required | safe harbour';
+    return fmtValue(cls, cls.q1) + ' – ' + fmtValue(cls, cls.q3) + ' (IQR)';
+  }
+
+  var exportBtn = document.getElementById('tp-export-btn');
+  if (exportBtn) {
+    exportBtn.addEventListener('click', function () {
+      var rows = CLASSES.map(function (c) {
+        return [c.name, c.method, c.testedParty, fmtValue(c, c.marker), statusMeta(c).label, rangeLabel(c)];
+      });
+      Arkk.exportCSV('northgate-q4-2024-benchmarking.csv', ['Class', 'Method', 'Tested party', 'Tested value', 'Status', "Arm's-length range"], rows);
+    });
+  }
+
+  var REFRESH_IDS = ['c1', 'c2', 'c5'];
+  var refreshSnapshot = null;
+  function rerenderTable() {
+    clear(tableEl);
+    CLASSES.forEach(function (c) { tableEl.appendChild(buildRow(c)); });
+    renderOpenState();
+  }
+  function updateStrip() {
+    var cards = document.querySelectorAll('.strip .score-card');
+    var below = CLASSES.filter(function (c) { return c.status === 'below'; });
+    var inRange = CLASSES.filter(function (c) { return c.status === 'in-range' || c.status === 'safe'; });
+    if (cards[1]) { var v1 = cards[1].querySelector('.v'); if (v1) v1.textContent = inRange.length; }
+    if (cards[2]) {
+      var v2 = cards[2].querySelector('.v'); if (v2) v2.textContent = below.length;
+      var s2 = cards[2].querySelector('.sub'); if (s2) s2.textContent = below.length ? below.map(function (c) { return c.name.split(' ')[0]; }).join(', ') : 'None';
+    }
+  }
+  function jitterClass(cls) {
+    var scale = 0.94 + Math.random() * 0.12; // ±6%, preserves min<=q1<=med<=q3<=max order
+    ['min', 'q1', 'med', 'q3', 'max'].forEach(function (k) {
+      if (typeof cls[k] === 'number') cls[k] = Math.max(cls.domainMin, Math.min(cls.domainMax, cls[k] * scale));
+    });
+    var markerJitter = cls.marker * (1 + (Math.random() * 2 - 1) * 0.08);
+    cls.marker = Math.max(cls.domainMin, Math.min(cls.domainMax, markerJitter));
+    if (cls.marker < cls.q1) cls.status = 'below';
+    else if (cls.marker > cls.q3) cls.status = 'above';
+    else cls.status = 'in-range';
+  }
+  var refreshBtn = document.getElementById('tp-refresh-btn');
+  var undoLink = null;
+  function removeUndo() { if (undoLink) { undoLink.remove(); undoLink = null; } }
+  function doRefresh() {
+    refreshSnapshot = REFRESH_IDS.map(function (id) {
+      var c = CLASSES.filter(function (x) { return x.id === id; })[0];
+      return { id: id, min: c.min, q1: c.q1, med: c.med, q3: c.q3, max: c.max, marker: c.marker, status: c.status };
+    });
+    refreshBtn.disabled = true;
+    var prevLabel = refreshBtn.textContent;
+    refreshBtn.textContent = 'Refreshing comparables…';
+    setTimeout(function () {
+      REFRESH_IDS.forEach(function (id) {
+        var c = CLASSES.filter(function (x) { return x.id === id; })[0];
+        if (c) jitterClass(c);
+      });
+      rerenderTable();
+      updateStrip();
+      refreshBtn.disabled = false;
+      refreshBtn.textContent = prevLabel;
+      Arkk.activity.log({ kind: 'export', title: 'Refreshed benchmarking comparables', meta: '3 of 5 classes updated', href: 'transfer-pricing.html' });
+      Arkk.toast('Benchmarking refreshed.', { sub: '3 of 5 classes updated | Legacy distribution held for review' });
+      removeUndo();
+      undoLink = el('a', { cls: 'muted', text: 'Undo refresh', style: 'font-size: 12px; margin-left: 10px; cursor: pointer;' });
+      undoLink.addEventListener('click', function () {
+        refreshSnapshot.forEach(function (snap) {
+          var c = CLASSES.filter(function (x) { return x.id === snap.id; })[0];
+          if (c) { c.min = snap.min; c.q1 = snap.q1; c.med = snap.med; c.q3 = snap.q3; c.max = snap.max; c.marker = snap.marker; c.status = snap.status; }
+        });
+        rerenderTable();
+        updateStrip();
+        removeUndo();
+        Arkk.toast('Refresh undone.');
+      });
+      refreshBtn.insertAdjacentElement('afterend', undoLink);
+    }, Arkk.reduce ? 0 : 1600);
+  }
+  if (refreshBtn) refreshBtn.addEventListener('click', doRefresh);
+
+  /* -----------------------------------------------------------------------
+     F. Reset demo — clears only the state this page writes.
+     ----------------------------------------------------------------------- */
+  var resetLink = document.getElementById('tp-reset-demo');
+  if (resetLink) resetLink.addEventListener('click', function (e) {
+    e.preventDefault();
+    try { localStorage.removeItem('arkk_pending_exceptions'); } catch (err) { /* no-op */ }
+    window.location.reload();
+  });
+});
+</script>
+
+</body>
+</html>

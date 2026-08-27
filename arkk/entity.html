@@ -1,0 +1,622 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<script>try{if(localStorage.getItem('arkk.nav.collapsed')==='1')document.documentElement.dataset.navCollapsed='1';}catch(e){}</script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Entity | Arkk Transfer Pricing</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  /* Chrome reconciliation: left sidebar is the ONE navigation; the topbar
+     segmented tab strip duplicated it and is removed. Collapse the topbar
+     grid from 3 tracks (nav | search | actions) to 2 (search | actions)
+     without touching shared.css (LAW, never edited). */
+  .topbar { grid-template-columns: 1fr auto !important; }
+</style>
+<link rel="stylesheet" href="arkk-nav.css" />
+<script defer src="arkk-data.js"></script>
+<script defer src="arkk.js"></script>
+<script defer src="arkk-nav.js"></script>
+<script defer src="arkk-chrome.js"></script>
+<style>
+  /* --- Carried over from index.html (not in shared.css): the metric-card family --- */
+  .metric-card {
+    background: linear-gradient(180deg, oklch(100% 0 0 / 0.7), oklch(100% 0 0 / 0.4));
+    backdrop-filter: saturate(160%) blur(20px);
+    -webkit-backdrop-filter: saturate(160%) blur(20px);
+    border: 1px solid oklch(100% 0 0 / 0.6);
+    border-radius: 14px;
+    padding: 16px 20px 14px;
+    display: flex; flex-direction: column;
+    gap: 4px;
+    position: relative;
+    overflow: hidden;
+    box-shadow:
+      inset 0 1px 0 oklch(100% 0 0 / 0.5),
+      0 8px 24px oklch(54% 0.19 254 / 0.04);
+  }
+  .metric-card::before {
+    content: ""; position: absolute; right: -60px; top: -60px;
+    width: 220px; height: 220px; border-radius: 50%;
+    background: radial-gradient(closest-side, oklch(94% 0.05 162 / 0.35), transparent 70%);
+    pointer-events: none;
+  }
+  .metric-card > * { position: relative; }
+  .m-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .m-label { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--ink-3); font-weight: 500; }
+  .m-delta {
+    display: inline-flex; align-items: center;
+    padding: 2px 8px;
+    font-family: "Geist Mono", monospace; font-size: 10px;
+    border-radius: 999px;
+    background: oklch(100% 0 0 / 0.6);
+    border: 1px solid var(--mint-line);
+    color: var(--mint-ink);
+    box-shadow: inset 0 1px 0 oklch(100% 0 0 / 0.5);
+  }
+  .m-value {
+    font-family: "Geist", sans-serif; font-size: 30px; line-height: 1; letter-spacing: -0.03em;
+    font-weight: 500; color: var(--ink);
+    display: flex; align-items: baseline; gap: 4px; margin-top: 2px;
+    font-feature-settings: "tnum";
+  }
+  .m-value .m-unit { font-size: 13px; color: var(--ink-3); font-weight: 400; letter-spacing: 0; }
+  .m-meta { font-size: 11px; color: var(--ink-3); margin-top: -2px; }
+  .m-chart { margin-top: 14px; flex: 1; min-height: 130px; display: flex; flex-direction: column; gap: 8px; }
+  .m-bars {
+    flex: 1; position: relative; display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 12px; align-items: end; padding: 4px 0 6px; min-height: 90px;
+  }
+  .m-bars-target { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed oklch(70% 0.01 254); pointer-events: none; z-index: 1; }
+  .m-bars-target .lbl {
+    position: absolute; right: 0; top: -16px;
+    font-family: "Geist Mono", monospace; font-size: 9px; color: var(--ink-3);
+    background: oklch(100% 0 0 / 0.6); padding: 1px 5px; border-radius: 3px;
+  }
+  .m-bar-col { height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; }
+  .m-bar { width: 100%; border-radius: 5px 5px 2px 2px; background: oklch(90% 0.008 254); position: relative; z-index: 2; }
+  .m-bar-col.current .m-bar {
+    background: linear-gradient(180deg, var(--brand-2), var(--brand));
+    box-shadow: 0 -2px 8px oklch(54% 0.19 254 / 0.25);
+  }
+  .m-axis {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+    font-family: "Geist Mono", monospace; font-size: 10px; color: var(--ink-4);
+    text-align: center; padding-top: 6px; border-top: 1px solid var(--line-2);
+  }
+  .m-axis span { display: flex; flex-direction: column; gap: 1px; align-items: center; }
+  .m-axis span .v { font-size: 11px; color: var(--ink-2); font-weight: 500; }
+  .m-axis span.current { color: var(--ink); font-weight: 500; }
+  .m-axis span.current .v { color: var(--ink); }
+
+  /* --- Page-local --- */
+  .strip { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 18px; }
+  /* QA fix: 5-up strip is narrower than the 3-4 col strips elsewhere; the
+     shared .score-card .v scale (clamp 36-52px) is sized for those wider
+     cards and overflows a "£ " prefix + decimal + unit here (was shattering
+     to 2 lines / clipping the unit). Scale the numeral down for this strip
+     only so every card's value sits on one full, un-clipped line. */
+  .strip .score-card .v { font-size: clamp(22px, 2.4vw, 30px); }
+  .grid-2-1 { display: grid; grid-template-columns: 1.6fr 1fr; gap: 16px; }
+  .side-card { position: sticky; top: 110px; display: flex; flex-direction: column; gap: 16px; }
+  .not-found {
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+    gap: 12px; padding: 72px 24px;
+  }
+  .not-found p { margin: 0; color: var(--ink-3); font-size: 13px; max-width: 44ch; }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Primary (dashboard) navigation -->
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <div class="logo">fs</div>
+      <button class="ws-switch">
+        Northgate
+        <svg class="ico-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l5 5 5-5"/></svg>
+      </button>
+    </div>
+    <div class="sidebar-section">
+      <a class="nav-item" href="./">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 9.5V21h5v-7h4v7h5V9.5"/></svg>
+        <span class="nav-label">Dashboard</span>
+      </a>
+      <a class="nav-item" href="#" data-focus-search>
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <span class="nav-label">Search</span>
+        <span class="count">⌘K</span>
+      </a>
+      <a class="nav-item" href="#" data-quiet="Inbox">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l3-9h12l3 9v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1zM3 13h6l1 3h4l1-3h6"/></svg>
+        <span class="nav-label">Inbox</span>
+        <span class="count">3</span>
+      </a>
+    </div>
+    <div class="sidebar-section">
+      <div class="heading">Workspace</div>
+      <a class="nav-item active" href="./">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 9.5V21h5v-7h4v7h5V9.5"/></svg>
+        <span class="nav-label">Overview</span>
+      </a>
+      <a class="nav-item" href="matrix.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h6v6H4zM14 6h6v6h-6zM4 16h6v4H4zM14 16h6v4h-6z"/></svg>
+        <span class="nav-label">Cost matrix</span>
+      </a>
+      <a class="nav-item" href="transfer-pricing.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h14M14 5l3 3-3 3M21 16H7M10 19l-3-3 3-3"/></svg>
+        <span class="nav-label">Benchmarking</span>
+      </a>
+      <a class="nav-item" href="hierarchy.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="6" rx="1.3"/><rect x="3" y="15" width="6" height="6" rx="1.3"/><rect x="15" y="15" width="6" height="6" rx="1.3"/><path d="M12 9v3M6 15v-3h12v3"/></svg>
+        <span class="nav-label">Hierarchy</span>
+      </a>
+      <a class="nav-item" href="runs.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M10.2 8.7l5.4 3.3-5.4 3.3z"/></svg>
+        <span class="nav-label">Runs</span>
+      </a>
+      <a class="nav-item" href="workflows.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h6m0 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM5 17h6m0 0a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM5 7v10"/></svg>
+        <span class="nav-label">Workflows</span>
+      </a>
+    </div>
+    <div class="sidebar-section">
+      <div class="heading">Data &amp; admin</div>
+      <a class="nav-item" href="data-sources.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>
+        <span class="nav-label">Data sources</span>
+      </a>
+      <a class="nav-item" href="reports.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>
+        <span class="nav-label">Reports</span>
+      </a>
+      <a class="nav-item" href="#" data-quiet="Settings">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .4 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.4 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .4-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.4-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.4H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.4l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.4 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        <span class="nav-label">Settings</span>
+      </a>
+    </div>
+    <div class="sidebar-foot">
+      <div class="user-chip">TH</div>
+      <div>
+        <div class="nm">Tom Heffes</div>
+        <div class="rl">Tax Lead | Northgate</div>
+      </div>
+      <a class="more" href="#" data-quiet="Account menu" title="Account menu">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Icon rail (legacy, hidden) -->
+  <aside class="rail" aria-label="Workspace">
+    <div class="logo">fs</div>
+    <nav class="nav">
+      <a href="./" class="item active" title="Overview"><svg class="ico" viewBox="0 0 24 24"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg></a>
+      <a href="matrix.html" class="item" title="Cost matrix"><svg class="ico" viewBox="0 0 24 24"><path d="M4 6h6v6H4zM14 6h6v6h-6zM4 16h6v4H4zM14 16h6v4h-6z"/></svg></a>
+      <a href="hierarchy.html" class="item" title="Hierarchy"><svg class="ico" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="6" rx="1.3"/><rect x="3" y="15" width="6" height="6" rx="1.3"/><rect x="15" y="15" width="6" height="6" rx="1.3"/><path d="M12 9v3M6 15v-3h12v3"/></svg></a>
+      <a href="runs.html" class="item" title="Runs"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M10.2 8.7l5.4 3.3-5.4 3.3z"/></svg></a>
+      <a href="workflows.html" class="item" title="Workflows"><svg class="ico" viewBox="0 0 24 24"><path d="M5 7h6m0 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM5 17h6m0 0a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM5 7v10"/></svg></a>
+    </nav>
+    <div class="spacer"></div>
+    <a href="#" class="item" style="width: 40px; height: 40px;" title="Help" data-quiet="Help"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.4v.3M12 17h.01"/></svg></a>
+    <a href="#" class="item" style="width: 40px; height: 40px;" title="Settings" data-quiet="Settings"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .4 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.4 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .4-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.4-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.4H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.4l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.4 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></a>
+    <div class="me" title="Tom Heffes">TH</div>
+  </aside>
+
+  <main class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="brand-block">
+        <div class="logo">fs</div>
+        <button class="ws-switch">Northgate <svg class="ico-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l5 5 5-5"/></svg></button>
+      </div>
+      <div class="search">
+        <svg class="ico-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input placeholder="Jump to anything: entity, CC, transaction, run…" />
+        <span class="kbd">⌘K</span>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn" title="History"><svg class="ico" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5M12 7v6l4 2"/></svg></button>
+        <button class="icon-btn" title="Notifications"><svg class="ico" viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9zM10 21a2 2 0 0 0 4 0"/></svg></button>
+        <div class="user-chip" title="Tom Heffes">TH</div>
+      </div>
+    </div>
+
+    <div class="page" id="page-body">
+      <!-- Rendered entirely by script below -->
+    </div>
+  </main>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  'use strict';
+  var el = Arkk.el, icon = Arkk.icon, clear = Arkk.clear;
+  var page = document.getElementById('page-body');
+
+  var ENTITIES = {
+    'connect-finco': {
+      code: 'LU-2291', jurisdiction: 'Luxembourg', group: 'Principal companies', currency: 'EUR',
+      title: 'CONNECT FINCO', em: '(LUX)',
+      gross: 112.4, share: 27.3, markup: '+7%', adjustment: 7.9, ccCount: 42,
+      rankSub: 'rank 01 of 186', shareSub: 'vs 20.9% #2', markupSub: 'Cost +7% rule', adjSub: '+£0.5m vs Q3', unmappedSub: '3 unmapped',
+      trendDelta: '+6% vs Q3', trendBars: [96.4, 102.1, 106.0, 112.4], trendMax: 130, trendTarget: 108,
+      costCentres: [
+        { code: '5001', name: 'IP licensing', rollup: 'Finance & IT services', rule: 'markup-7', ruleLabel: 'Cost +7%', gross: '£ 38.4m', share: 34 },
+        { code: '5040', name: 'Treasury services', rollup: 'Group treasury', rule: 'at-cost', ruleLabel: 'At cost', gross: '£ 22.1m', share: 20 },
+        { code: '5170', name: 'New cost centre', rollup: 'unmapped', rule: 'ignore', ruleLabel: 'Unmapped', gross: '£ 0', share: 0 },
+        { code: '5210', name: 'Regional coordination', rollup: 'BU Operations', rule: 'markup-5', ruleLabel: 'Cost +5%', gross: '£ 18.6m', share: 17 },
+        { code: '5300', name: 'Shared services recharge', rollup: 'Central services', rule: 'markup-7', ruleLabel: 'Cost +7%', gross: '£ 33.3m', share: 29 }
+      ],
+      runs: [
+        { id: 'TP-Q4-2024-12', date: 'Today | 12:42', adj: '£ 15.19m', status: 'in-progress', statusLabel: 'Live' },
+        { id: 'TP-Q3-2024', date: '21 Oct', adj: '£ 14.10m', status: 'done', statusLabel: 'Posted' },
+        { id: 'TP-Q2-2024', date: '18 Jul', adj: '£ 13.80m', status: 'done', statusLabel: 'Posted' }
+      ],
+      activity: [
+        { who: 'John Doe', text: 'set Routine × CFO to Cost +5%', time: '2m' },
+        { who: 'Maria R.', text: 'approved hierarchy affecting this entity', time: '1h' }
+      ]
+    },
+    'northgate-solutions': {
+      code: 'RS-4410', jurisdiction: 'Serbia', group: 'Routine', currency: 'RSD',
+      title: 'NORTHGATE SOLUTIONS', em: '(DOO)',
+      gross: 86.2, share: 20.9, markup: '+7%', adjustment: 6.0, ccCount: 31,
+      rankSub: 'rank 02 of 186', shareSub: 'vs 27.3% #1', markupSub: 'Cost +7% rule', adjSub: '+£0.3m vs Q3', unmappedSub: '1 unmapped',
+      trendDelta: '+4% vs Q3', trendBars: [74.2, 79.8, 83.0, 86.2], trendMax: 100, trendTarget: 80,
+      costCentres: [
+        { code: '6001', name: 'Network operations', rollup: 'BU Operations', rule: 'markup-7', ruleLabel: 'Cost +7%', gross: '£ 41.2m', share: 48 },
+        { code: '6040', name: 'Regional support', rollup: 'Sales & Marketing', rule: 'markup-5', ruleLabel: 'Cost +5%', gross: '£ 25.0m', share: 29 },
+        { code: '6090', name: 'Facilities', rollup: 'Central services', rule: 'at-cost', ruleLabel: 'At cost', gross: '£ 20.0m', share: 23 }
+      ],
+      runs: [
+        { id: 'TP-Q4-2024-12', date: 'Today | 12:42', adj: '£ 11.98m', status: 'in-progress', statusLabel: 'Live' },
+        { id: 'TP-Q3-2024', date: '21 Oct', adj: '£ 11.20m', status: 'done', statusLabel: 'Posted' }
+      ],
+      activity: [
+        { who: 'Anil K.', text: 'flagged 1 unmapped CC in Routine', time: '3h' }
+      ]
+    },
+    'connect-bidco': {
+      code: 'UK-1187', jurisdiction: 'United Kingdom', group: 'Principal companies', currency: 'GBP',
+      title: 'CONNECT BIDCO', em: '(UK)',
+      gross: 64.0, share: 15.5, markup: '+5%', adjustment: 3.4, ccCount: 19,
+      rankSub: 'rank 03 of 186', shareSub: 'vs 20.9% #2', markupSub: 'Cost +5% rule', adjSub: '+£0.2m vs Q3', unmappedSub: '0 unmapped',
+      trendDelta: '+3% vs Q3', trendBars: [58.1, 60.4, 62.1, 64.0], trendMax: 76, trendTarget: 60,
+      costCentres: [
+        { code: '7001', name: 'Group HQ costs', rollup: 'Central services', rule: 'markup-5', ruleLabel: 'Cost +5%', gross: '£ 34.0m', share: 53 },
+        { code: '7050', name: 'Legal & compliance', rollup: 'Finance & IT services', rule: 'at-cost', ruleLabel: 'At cost', gross: '£ 30.0m', share: 47 }
+      ],
+      runs: [
+        { id: 'TP-Q4-2024-12', date: 'Today | 12:42', adj: '£ 7.14m', status: 'in-progress', statusLabel: 'Live' },
+        { id: 'TP-Q3-2024', date: '21 Oct', adj: '£ 6.80m', status: 'done', statusLabel: 'Posted' }
+      ],
+      activity: [
+        { who: 'John Doe', text: 'imported new TB for Connect Bidco', time: 'Yest.' }
+      ]
+    },
+    'northgate-dooel': {
+      code: 'MK-2201', jurisdiction: 'North Macedonia', group: 'Routine', currency: 'MKD',
+      title: 'NORTHGATE DOOEL', em: '(SKOPJE)',
+      gross: 41.8, share: 10.1, markup: 'At cost', adjustment: 0.0, ccCount: 12,
+      rankSub: 'rank 04 of 186', shareSub: 'vs 15.5% #3', markupSub: 'At cost rule', adjSub: 'flat vs Q3', unmappedSub: '0 unmapped',
+      trendDelta: '+2% vs Q3', trendBars: [39.0, 40.1, 41.0, 41.8], trendMax: 50, trendTarget: 40,
+      costCentres: [
+        { code: '8001', name: 'Local operations', rollup: 'BU Operations', rule: 'at-cost', ruleLabel: 'At cost', gross: '£ 41.8m', share: 100 }
+      ],
+      runs: [
+        { id: 'TP-Q4-2024-12', date: 'Today | 12:42', adj: '£ 3.60m', status: 'in-progress', statusLabel: 'Live' }
+      ],
+      activity: []
+    },
+    'new-wave': {
+      code: 'IE-3120', jurisdiction: 'Ireland', group: 'Routine', currency: 'EUR',
+      title: 'NEW WAVE BROADBAND', em: '(IE)',
+      gross: 28.4, share: 6.9, markup: '+7%', adjustment: 2.0, ccCount: 9,
+      rankSub: 'rank 05 of 186', shareSub: 'vs 10.1% #4', markupSub: 'Cost +7% rule', adjSub: '+£0.1m vs Q3', unmappedSub: '0 unmapped',
+      trendDelta: '+5% vs Q3', trendBars: [25.0, 26.2, 27.0, 28.4], trendMax: 34, trendTarget: 27,
+      costCentres: [
+        { code: '9001', name: 'Broadband operations', rollup: 'BU Operations', rule: 'markup-7', ruleLabel: 'Cost +7%', gross: '£ 28.4m', share: 100 }
+      ],
+      runs: [
+        { id: 'TP-Q4-2024-12', date: 'Today | 12:42', adj: '£ 30.39m', status: 'in-progress', statusLabel: 'Live' }
+      ],
+      activity: []
+    }
+  };
+
+  function slugFromQuery() {
+    var m = /[?&]e=([^&]+)/.exec(window.location.search);
+    return m ? decodeURIComponent(m[1]) : null;
+  }
+
+  function fmtM(n) { return n.toFixed(1); }
+
+  function render() {
+    var slug = slugFromQuery() || 'connect-finco';
+    var e = ENTITIES[slug];
+    if (!e) { renderNotFound(); return; }
+
+    clear(page);
+
+    var crumbs = el('nav', { cls: 'crumbs' });
+    var c1 = el('a', { text: 'Transfer Pricing' }); c1.href = './';
+    var c2 = el('a', { text: 'Q4 2024' }); c2.href = './';
+    var c3 = el('a', { text: 'Entities' }); c3.href = './';
+    var c4 = el('span', { cls: 'here', text: e.title + ' ' + e.em });
+    [c1, c2, c3].forEach(function (c) { crumbs.appendChild(c); crumbs.appendChild(el('span', { cls: 'sep', text: '/' })); });
+    crumbs.appendChild(c4);
+    page.appendChild(crumbs);
+
+    var head = el('div', { cls: 'page-head' });
+    head.setAttribute('data-reveal', '');
+    var headLeft = el('div');
+    headLeft.appendChild(el('div', { cls: 'page-eyebrow', text: e.code + ' | ' + e.jurisdiction + ' | ' + e.group + ' | functional currency ' + e.currency }));
+    var h1 = el('h1', { cls: 'page-title' });
+    h1.appendChild(document.createTextNode(e.title + ' '));
+    h1.appendChild(el('em', { text: e.em }));
+    headLeft.appendChild(h1);
+    headLeft.appendChild(el('p', { cls: 'page-sub', text: 'Principal entity in the Northgate group. Contributes ' + e.share + '% of the Q4 TP cost base. Markup and adjustments below are the live figures for this period.' }));
+    head.appendChild(headLeft);
+
+    var headMeta = el('div', { cls: 'page-meta' });
+    headMeta.appendChild(el('span', { cls: 'status-pill done', text: 'In this period' }));
+    var exportBtn = el('button', { cls: 'btn', text: 'Export', type: 'button' });
+    exportBtn.addEventListener('click', function () {
+      var rows = e.costCentres.map(function (cc) {
+        return [cc.code, cc.name, cc.rollup === 'unmapped' ? 'Unmapped' : cc.rollup, cc.rollup === 'unmapped' ? 'Unmapped' : cc.ruleLabel, cc.gross, cc.share + '%'];
+      });
+      Arkk.exportCSV(slug + '-cost-centres.csv', ['Code', 'Name', 'Rollup', 'Rule', 'Gross cost', 'Share'], rows);
+    });
+    headMeta.appendChild(exportBtn);
+    var openMatrix = el('a', { cls: 'btn', text: 'Open in matrix →' }); openMatrix.href = 'matrix.html';
+    var openRun = el('a', { cls: 'btn primary', text: 'Open linked run →' }); openRun.href = 'runs.html'; openRun.setAttribute('data-commit', '');
+    headMeta.appendChild(openMatrix); headMeta.appendChild(openRun);
+    head.appendChild(headMeta);
+    page.appendChild(head);
+
+    var strip = el('div', { cls: 'strip' });
+    strip.setAttribute('data-reveal', '');
+    function statCard(label, value, opts, sub) {
+      opts = opts || {};
+      var card = el('div', { cls: 'score-card' });
+      card.appendChild(el('div', { cls: 'label', text: label }));
+      var v = el('div', { cls: 'v' });
+      if (opts.count !== undefined) {
+        v.setAttribute('data-count', opts.count);
+        if (opts.decimals) v.setAttribute('data-count-decimals', opts.decimals);
+        if (opts.prefix) v.setAttribute('data-count-prefix', opts.prefix);
+        if (opts.suffix) v.appendChild(el('span', { cls: 'unit', text: opts.suffix }));
+      } else {
+        v.textContent = value;
+      }
+      card.appendChild(v);
+      card.appendChild(el('div', { cls: 'sub', text: sub }));
+      strip.appendChild(card);
+    }
+    statCard('Gross cost', null, { count: e.gross, decimals: 1, prefix: '£ ', suffix: 'm' }, e.rankSub);
+    statCard('Share of TP base', null, { count: e.share, decimals: 1, suffix: '%' }, e.shareSub);
+    statCard('Markup applied', e.markup, null, e.markupSub);
+    statCard('Adjustment', null, { count: e.adjustment, decimals: 1, prefix: '£ ', suffix: 'm' }, e.adjSub);
+    statCard('Cost centres', null, { count: e.ccCount }, e.unmappedSub);
+    page.appendChild(strip);
+
+    var grid = el('div', { cls: 'grid-2-1' });
+    var left = el('div', { style: 'display:flex; flex-direction:column; gap:16px;' });
+
+    /* Trend card */
+    var trend = el('div', { cls: 'metric-card' });
+    trend.setAttribute('data-reveal', '');
+    var tHead = el('div', { cls: 'm-head' });
+    tHead.appendChild(el('span', { cls: 'm-label', text: 'Gross cost by quarter' }));
+    tHead.appendChild(el('span', { cls: 'm-delta', text: e.trendDelta }));
+    trend.appendChild(tHead);
+    var tVal = el('div', { cls: 'm-value' });
+    tVal.setAttribute('data-count', fmtM(e.trendBars[3]));
+    tVal.setAttribute('data-count-decimals', '1');
+    tVal.setAttribute('data-count-prefix', '£ ');
+    tVal.appendChild(el('span', { cls: 'm-unit', text: 'm' }));
+    trend.appendChild(tVal);
+    trend.appendChild(el('div', { cls: 'm-meta', text: 'target band ' + e.trendTarget + 'm+' }));
+    var chart = el('div', { cls: 'm-chart' });
+    var bars = el('div', { cls: 'm-bars' });
+    var targetPct = Math.min(96, (e.trendTarget / e.trendMax) * 100);
+    var targetLine = el('div', { cls: 'm-bars-target', style: 'bottom:' + targetPct + '%;' });
+    targetLine.appendChild(el('span', { cls: 'lbl', text: e.trendTarget + 'm | target' }));
+    bars.appendChild(targetLine);
+    var axis = el('div', { cls: 'm-axis' });
+    var qlabels = ['Q1', 'Q2', 'Q3', 'Q4'];
+    e.trendBars.forEach(function (val, i) {
+      var pct = Math.round((val / e.trendMax) * 100);
+      var col = el('div', { cls: 'm-bar-col' + (i === 3 ? ' current' : '') });
+      var barNode = el('div', { cls: 'm-bar', style: 'height:0%;' });
+      barNode.setAttribute('data-to', pct + '%');
+      col.appendChild(barNode);
+      bars.appendChild(col);
+      var axisSpan = el('span', { cls: i === 3 ? 'current' : '' });
+      axisSpan.appendChild(el('span', { cls: 'v', text: '£' + val.toFixed(1) + 'm' }));
+      axisSpan.appendChild(document.createTextNode(qlabels[i]));
+      axis.appendChild(axisSpan);
+    });
+    chart.appendChild(bars); chart.appendChild(axis);
+    trend.appendChild(chart);
+    left.appendChild(trend);
+
+    /* Cost centres table */
+    var ccCard = el('div', { cls: 'card flush' });
+    ccCard.setAttribute('data-reveal', '');
+    var ccHead = el('div', { cls: 'card-head' });
+    var ccTitle = el('div', { cls: 'card-title' });
+    ccTitle.appendChild(el('span', { cls: 'num-badge', text: 'COST CENTRES' }));
+    ccTitle.appendChild(document.createTextNode(' ' + e.costCentres.length + ' in this entity'));
+    ccHead.appendChild(ccTitle);
+    var ccSeg = el('div', { cls: 'seg' });
+    ccSeg.appendChild(el('button', { cls: 'on', text: 'By cost', type: 'button' }));
+    ccSeg.appendChild(el('button', { text: 'By rule', type: 'button' }));
+    ccHead.appendChild(ccSeg);
+    ccCard.appendChild(ccHead);
+
+    var table = el('table', { cls: 'data' });
+    var thead = el('thead');
+    var thr = el('tr');
+    ['#', 'Cost centre', 'Rollup', 'Rule', 'Gross cost', 'Share'].forEach(function (h, i) {
+      var th = el('th', { text: h });
+      if (i >= 4) th.style.textAlign = 'right';
+      thr.appendChild(th);
+    });
+    thead.appendChild(thr); table.appendChild(thead);
+    var tbody = el('tbody');
+    function buildCCRow(cc, i) {
+      var tr = el('tr');
+      tr.appendChild(el('td', { cls: 'rank', text: String(i + 1).padStart(2, '0') }));
+      var nameTd = el('td');
+      var nameWrap = el('div', { cls: 'name' });
+      nameWrap.appendChild(el('span', { cls: 'ent-av', text: cc.code.slice(-2) }));
+      nameWrap.appendChild(document.createTextNode(cc.code + ' ' + cc.name));
+      nameTd.appendChild(nameWrap);
+      tr.appendChild(nameTd);
+      tr.appendChild(el('td', { text: cc.rollup === 'unmapped' ? '' : cc.rollup }));
+      var ruleTd = el('td');
+      if (cc.rollup === 'unmapped') {
+        ruleTd.appendChild(el('span', { cls: 'tag brand', text: 'UNMAPPED' }));
+      } else {
+        ruleTd.appendChild(el('span', { cls: 'pill ' + cc.rule, text: cc.ruleLabel }));
+      }
+      tr.appendChild(ruleTd);
+      tr.appendChild(el('td', { cls: 'num', text: cc.gross }));
+      var shareTd = el('td', { style: 'width:110px;' });
+      var barRow = el('div', { cls: 'bar-row', style: 'grid-template-columns: 1fr 34px;' });
+      var track = el('div', { cls: 'bar-track' });
+      var fillNode = el('div', { cls: 'bar-fill', style: 'width:0%;' });
+      fillNode.setAttribute('data-to', cc.share + '%');
+      track.appendChild(fillNode);
+      barRow.appendChild(track);
+      barRow.appendChild(el('span', { cls: 'val', text: cc.share + '%' }));
+      shareTd.appendChild(barRow);
+      tr.appendChild(shareTd);
+      return tr;
+    }
+    /* WAVE 2 - "By cost / By rule" seg: real re-sort of the same row set,
+       not decoration. Gross-cost string ("£ 1.2m") parsed once so both
+       orders are cheap to compute; re-render calls Arkk.drawChart(tbody)
+       so the freshly-built bar-fills animate exactly like the initial
+       paint instead of appearing pre-filled. */
+    function parseGrossVal(s) { var m = /([\d.]+)/.exec(s || ''); return m ? parseFloat(m[1]) : 0; }
+    var byCostOrder = e.costCentres.slice().sort(function (a, b) { return parseGrossVal(b.gross) - parseGrossVal(a.gross); });
+    var byRuleOrder = e.costCentres.slice().sort(function (a, b) {
+      var ra = a.rollup === 'unmapped' ? 'zzz-unmapped' : (a.ruleLabel || '');
+      var rb = b.rollup === 'unmapped' ? 'zzz-unmapped' : (b.ruleLabel || '');
+      if (ra === rb) return parseGrossVal(b.gross) - parseGrossVal(a.gross);
+      return ra < rb ? -1 : 1;
+    });
+    function renderCCRows(list) {
+      clear(tbody);
+      list.forEach(function (cc, i) { tbody.appendChild(buildCCRow(cc, i)); });
+      Arkk.drawChart(tbody);
+    }
+    renderCCRows(byCostOrder);
+    var ccSegButtons = ccSeg.querySelectorAll('button');
+    Array.prototype.forEach.call(ccSegButtons, function (btn, i) {
+      btn.addEventListener('click', function () {
+        if (btn.classList.contains('on')) return;
+        Array.prototype.forEach.call(ccSegButtons, function (b) { b.classList.remove('on'); });
+        btn.classList.add('on');
+        renderCCRows(i === 0 ? byCostOrder : byRuleOrder);
+      });
+    });
+    table.appendChild(tbody);
+    ccCard.appendChild(table);
+    left.appendChild(ccCard);
+
+    /* Linked runs */
+    var runsCard = el('div', { cls: 'card flush' });
+    runsCard.setAttribute('data-reveal', '');
+    var runsHead = el('div', { cls: 'card-head' });
+    var runsTitle = el('div', { cls: 'card-title' });
+    runsTitle.appendChild(el('span', { cls: 'num-badge', text: 'RUNS' }));
+    runsTitle.appendChild(document.createTextNode(' Runs touching this entity'));
+    runsHead.appendChild(runsTitle);
+    runsCard.appendChild(runsHead);
+    var runsList = el('div', { cls: 'feed' });
+    e.runs.forEach(function (r) {
+      var item = el('div', { cls: 'feed-item' });
+      item.style.cursor = 'pointer';
+      item.addEventListener('click', function () { window.location.href = 'run-detail?run=' + encodeURIComponent(r.id); });
+      item.appendChild(el('div', { cls: 'feed-avatar', text: 'TP' }));
+      var body = el('div', { cls: 'feed-body' });
+      var b = el('b', { cls: 'mono', text: r.id }); body.appendChild(b);
+      body.appendChild(document.createTextNode(' | ' + r.date + ' | '));
+      body.appendChild(el('span', { cls: 'status-pill ' + r.status, text: r.statusLabel }));
+      item.appendChild(body);
+      item.appendChild(el('div', { cls: 'feed-time', text: r.adj }));
+      runsList.appendChild(item);
+    });
+    runsCard.appendChild(runsList);
+    left.appendChild(runsCard);
+
+    grid.appendChild(left);
+
+    /* Right rail */
+    var side = el('aside', { cls: 'side-card' });
+    var actCard = el('div', { cls: 'card flush' });
+    actCard.setAttribute('data-reveal', '');
+    var actHead = el('div', { cls: 'card-head' });
+    var actTitle = el('div', { cls: 'card-title' });
+    actTitle.appendChild(el('span', { cls: 'num-badge', text: 'ACTIVITY' }));
+    actTitle.appendChild(document.createTextNode(' Recent changes'));
+    actHead.appendChild(actTitle);
+    actCard.appendChild(actHead);
+    var actFeed = el('div', { cls: 'feed', style: 'padding: 4px 18px 18px;' });
+    if (e.activity.length) {
+      e.activity.forEach(function (a) {
+        var item = el('div', { cls: 'feed-item' });
+        item.appendChild(el('div', { cls: 'feed-avatar', text: a.who.split(' ').map(function (w) { return w[0]; }).join('').slice(0, 2) }));
+        var body = el('div', { cls: 'feed-body' });
+        var bEl = el('b', { text: a.who });
+        body.appendChild(bEl);
+        body.appendChild(document.createTextNode(' ' + a.text));
+        item.appendChild(body);
+        item.appendChild(el('div', { cls: 'feed-time', text: a.time }));
+        actFeed.appendChild(item);
+      });
+    } else {
+      actFeed.appendChild(el('p', { cls: 'muted', text: 'No activity recorded for this entity yet this period.', style: 'font-size:12px; margin:0;' }));
+    }
+    actCard.appendChild(actFeed);
+    side.appendChild(actCard);
+    grid.appendChild(side);
+
+    page.appendChild(grid);
+
+    Arkk.revealOnLoad(page);
+    Arkk.initCountUps(page);
+    Arkk.drawChart(page);
+    Arkk.wireCommitButtons(page);
+  }
+
+  function renderNotFound() {
+    clear(page);
+    var crumbs = el('nav', { cls: 'crumbs' });
+    var c1 = el('a', { text: 'Transfer Pricing' }); c1.href = './';
+    crumbs.appendChild(c1);
+    page.appendChild(crumbs);
+
+    var wrap = el('div', { cls: 'not-found' });
+    wrap.setAttribute('data-reveal', '');
+    wrap.appendChild(el('div', { text: 'We could not find that entity in Q4 2024.', style: 'font-size:16px; font-weight:500; color:var(--ink);' }));
+    wrap.appendChild(el('p', { text: 'The link may be out of date, or this entity has not been added to the current hierarchy.' }));
+    var back = el('a', { cls: 'btn primary', text: 'Back to contributors' }); back.href = './';
+    wrap.appendChild(back);
+    page.appendChild(wrap);
+    Arkk.revealOnLoad(page);
+  }
+
+  render();
+});
+</script>
+
+</body>
+</html>

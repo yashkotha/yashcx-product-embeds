@@ -1,0 +1,1487 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<script>try{if(localStorage.getItem('arkk.nav.collapsed')==='1')document.documentElement.dataset.navCollapsed='1';}catch(e){}</script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Hierarchy | Arkk Transfer Pricing</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  /* Chrome reconciliation: left sidebar is the ONE navigation; the topbar
+     segmented tab strip duplicated it and is removed. Collapse the topbar
+     grid from 3 tracks (nav | search | actions) to 2 (search | actions)
+     without touching shared.css (LAW, never edited). */
+  .topbar { grid-template-columns: 1fr auto !important; }
+</style>
+<link rel="stylesheet" href="arkk-nav.css" />
+<script defer src="arkk-data.js"></script>
+<script defer src="arkk.js"></script>
+<script defer src="arkk-nav.js"></script>
+<script defer src="arkk-chrome.js"></script>
+<style>
+  .strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 18px; }
+  /* Interaction-layer additions (v6) */
+  .tree-row .actions { opacity: 0; transition: opacity var(--dur-micro) var(--ease-house); }
+  .tree-row:hover .actions, .tree-row:focus-within .actions { opacity: 1; }
+  /* Keyboard Move-to select (Group 2 a11y fix): keeps the row's existing
+     hover-reveal pattern but also reveals on keyboard focus so Tab users
+     can reach it without a mouse. */
+  .tree-row .actions select:focus-visible {
+    opacity: 1;
+    outline: 2px solid oklch(54% 0.19 254 / 0.35);
+    outline-offset: 1px;
+  }
+  /* shared.css draws a naked circular dot at the drop-line's leading edge
+     (.drop-line::before) - shape-law violation. Override with a squared-off
+     line cap instead (still reads as "insert here", no decorative dot). */
+  .drop-line::before {
+    border-radius: 2px;
+    width: 4px; height: 2px; top: 0; left: -4px;
+  }
+  .tree-row .twirl:not(.empty) { transition: transform var(--dur-micro) var(--ease-house); }
+  .tree-row.dragging-live { cursor: grabbing; }
+  .split { display: grid; grid-template-columns: 1.6fr 1fr; gap: 18px; align-items: start; }
+  .side-card { position: sticky; top: 110px; display: flex; flex-direction: column; gap: 18px; }
+
+  .move-summary {
+    display: grid;
+    grid-template-columns: 1fr 24px 1fr;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 10px 12px;
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+  .move-summary .nest {
+    padding: 8px 10px; background: var(--surface);
+    border-radius: 8px; border: 1px solid var(--line);
+    font-size: 12px;
+  }
+  .move-summary .nest .id { font-family: "Geist Mono", monospace; color: var(--ink-3); font-size: 11px; }
+  .move-summary .nest .nm { color: var(--ink); font-weight: 500; margin-top: 2px; }
+  .move-summary .arr { color: var(--ink-3); display: grid; place-items: center; }
+  .move-summary .nest.to { background: var(--brand-soft); border-color: var(--brand-line); }
+  .move-summary .nest.to .nm { color: var(--brand-2); }
+
+  .recent-moves { display: flex; flex-direction: column; gap: 8px; }
+  .move-row {
+    display: grid;
+    grid-template-columns: 22px 1fr auto;
+    gap: 10px; align-items: center;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    background: var(--bg-3);
+    border: 1px solid var(--line-2);
+  }
+  .move-row .iconz {
+    width: 22px; height: 22px; border-radius: 6px;
+    background: var(--brand-soft); color: var(--brand);
+    display: grid; place-items: center;
+  }
+  .move-row b { color: var(--ink); font-weight: 500; }
+  .move-row .mono { color: var(--ink-3); }
+  .move-row .time { color: var(--ink-4); font-family: "Geist Mono", monospace; font-size: 11px; }
+
+  /* Distribution donut for entity-group share */
+  .grp-dist { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .grp-row { display: grid; grid-template-columns: 88px 1fr 60px; align-items: center; gap: 10px; font-size: 12px; }
+  .grp-row .nm { color: var(--ink); }
+
+  /* =====================================================================
+     Treemap modal (opens via "Tree map ↗" button)
+     ===================================================================== */
+  .treemap-modal {
+    position: fixed; inset: 0;
+    display: none;
+    z-index: 100;
+    background: oklch(20% 0.014 254 / 0.45);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    align-items: center; justify-content: center;
+    padding: 32px;
+  }
+  .treemap-modal.open {
+    display: flex;
+    animation: tm-fade .18s ease-out;
+  }
+  @keyframes tm-fade { from { opacity: 0; } to { opacity: 1; } }
+  .treemap-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    width: 100%; max-width: 1180px;
+    max-height: 92vh;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    box-shadow:
+      0 32px 80px oklch(20% 0.014 254 / 0.25),
+      0 4px 8px oklch(20% 0.014 254 / 0.06);
+  }
+  .treemap-head {
+    padding: 16px 22px;
+    border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px;
+  }
+  .treemap-eyebrow {
+    font-family: 'Geist Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .treemap-title {
+    margin: 4px 0 0;
+    font-size: 18px;
+    font-weight: 500;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+  }
+  .treemap-actions { display: flex; align-items: center; gap: 8px; }
+  .treemap-close {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: grid; place-items: center;
+    color: var(--ink-3);
+    border: 1px solid transparent;
+  }
+  .treemap-close:hover { background: var(--bg-2); color: var(--ink); border-color: var(--line); }
+
+  .treemap-body {
+    padding: 22px;
+    overflow: auto;
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 18px;
+    align-items: start;
+  }
+
+  /* The treemap itself — absolute positioned cells inside a relative box */
+  .treemap-viz {
+    position: relative;
+    background: var(--bg-2);
+    border-radius: 12px;
+    aspect-ratio: 16 / 10;
+    overflow: hidden;
+  }
+  .tm-cell {
+    position: absolute;
+    padding: 14px 16px;
+    color: white;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    cursor: pointer;
+    transition: filter .15s, transform .15s;
+    border: 1.5px solid var(--surface);
+  }
+  .tm-cell:hover { filter: brightness(1.08); z-index: 2; }
+  .tm-cell .tm-name {
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .tm-cell .tm-meta {
+    font-family: 'Geist Mono', monospace;
+    font-size: 11px;
+    opacity: 0.8;
+    margin-top: 2px;
+  }
+  .tm-cell .tm-val {
+    margin-top: auto;
+    font-family: 'Geist', sans-serif;
+    font-weight: 500;
+    letter-spacing: -0.025em;
+  }
+  .tm-cell.lg .tm-val { font-size: 28px; }
+  .tm-cell.md .tm-val { font-size: 22px; }
+  .tm-cell.sm .tm-val { font-size: 16px; }
+  .tm-cell.sm .tm-meta { display: none; }
+
+  /* Right side breakdown */
+  .treemap-side {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 16px;
+    background: var(--surface);
+  }
+  .treemap-side h4 {
+    margin: 0 0 10px;
+    font-size: 12px; font-weight: 500;
+    color: var(--ink);
+  }
+  .tm-legend-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 8px 0 8px 10px;
+    border-bottom: 1px solid var(--line-2);
+    border-left: 3px solid var(--sw, var(--line));
+    font-size: 12px;
+  }
+  .tm-legend-row:last-child { border-bottom: 0; }
+  .tm-legend-row .nm { color: var(--ink); font-weight: 500; }
+  .tm-legend-row .nm small { display: block; color: var(--ink-3); font-weight: 400; font-size: 11px; margin-top: 1px; }
+  .tm-legend-row .v {
+    font-family: 'Geist Mono', monospace;
+    font-size: 12px;
+    color: var(--ink);
+    text-align: right;
+  }
+  .tm-legend-row .v small { display: block; color: var(--ink-3); font-size: 10px; }
+
+  .treemap-foot {
+    padding: 14px 22px;
+    border-top: 1px solid var(--line);
+    background: var(--bg-3);
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+  .treemap-foot .total {
+    font-family: 'Geist Mono', monospace;
+    color: var(--ink);
+  }
+  .treemap-foot .total b { font-weight: 500; }
+
+  @media (max-width: 900px) {
+    .treemap-body { grid-template-columns: 1fr; }
+  }
+
+  /* Page-local secondary-action treatment: paired secondary actions
+     (Cancel / Back / Reset) must read as buttons, not bare text.
+     Neutral low-alpha ink fill, standard hairline, same geometry as the
+     adjacent primary. Hover deepens the fill. */
+  .btn.soft {
+    background: oklch(18% 0.014 254 / 0.05);
+    border-color: var(--line);
+    color: var(--ink-2);
+    box-shadow: none;
+  }
+  .btn.soft:hover {
+    background: oklch(18% 0.014 254 / 0.09);
+    border-color: oklch(87% 0.012 254);
+    color: var(--ink);
+  }
+  .btn.soft:focus-visible {
+    outline: 2px solid oklch(54% 0.19 254 / 0.3);
+    outline-offset: 1px;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Primary (dashboard) navigation -->
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <div class="logo">fs</div>
+      <button class="ws-switch">
+        Northgate
+        <svg class="ico-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l5 5 5-5"/></svg>
+      </button>
+    </div>
+    <div class="sidebar-section">
+      <a class="nav-item" href="./">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 9.5V21h5v-7h4v7h5V9.5"/></svg>
+        <span class="nav-label">Dashboard</span>
+      </a>
+      <a class="nav-item" href="#" data-focus-search>
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <span class="nav-label">Search</span>
+        <span class="count">⌘K</span>
+      </a>
+      <a class="nav-item" href="#" data-quiet="Inbox">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l3-9h12l3 9v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1zM3 13h6l1 3h4l1-3h6"/></svg>
+        <span class="nav-label">Inbox</span>
+        <span class="count">3</span>
+      </a>
+    </div>
+    <div class="sidebar-section">
+      <div class="heading">Workspace</div>
+      <a class="nav-item" href="./">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 9.5V21h5v-7h4v7h5V9.5"/></svg>
+        <span class="nav-label">Overview</span>
+      </a>
+      <a class="nav-item" href="matrix.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h6v6H4zM14 6h6v6h-6zM4 16h6v4H4zM14 16h6v4h-6z"/></svg>
+        <span class="nav-label">Cost matrix</span>
+      </a>
+      <a class="nav-item" href="transfer-pricing.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h14M14 5l3 3-3 3M21 16H7M10 19l-3-3 3-3"/></svg>
+        <span class="nav-label">Benchmarking</span>
+      </a>
+      <a class="nav-item active" href="hierarchy.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="6" rx="1.3"/><rect x="3" y="15" width="6" height="6" rx="1.3"/><rect x="15" y="15" width="6" height="6" rx="1.3"/><path d="M12 9v3M6 15v-3h12v3"/></svg>
+        <span class="nav-label">Hierarchy</span>
+      </a>
+      <a class="nav-item" href="runs.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M10.2 8.7l5.4 3.3-5.4 3.3z"/></svg>
+        <span class="nav-label">Runs</span>
+      </a>
+      <a class="nav-item" href="workflows.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h6m0 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM5 17h6m0 0a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM5 7v10"/></svg>
+        <span class="nav-label">Workflows</span>
+      </a>
+    </div>
+    <div class="sidebar-section">
+      <div class="heading">Data &amp; admin</div>
+      <a class="nav-item" href="data-sources.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>
+        <span class="nav-label">Data sources</span>
+      </a>
+      <a class="nav-item" href="reports.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>
+        <span class="nav-label">Reports</span>
+      </a>
+      <a class="nav-item" href="#" data-quiet="Settings">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .4 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.4 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .4-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.4-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.4H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.4l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.4 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        <span class="nav-label">Settings</span>
+      </a>
+    </div>
+    <div class="sidebar-foot">
+      <div class="user-chip">TH</div>
+      <div>
+        <div class="nm">Tom Heffes</div>
+        <div class="rl">Tax Lead | Northgate</div>
+      </div>
+      <a class="more" href="#" data-quiet="Account menu" title="Account menu">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Icon rail (legacy, hidden) -->
+  <aside class="rail" aria-label="Workspace">
+    <div class="logo">fs</div>
+    <nav class="nav">
+      <a href="./" class="item" title="Overview"><svg class="ico" viewBox="0 0 24 24"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg></a>
+      <a href="matrix.html" class="item" title="Cost matrix"><svg class="ico" viewBox="0 0 24 24"><path d="M4 6h6v6H4zM14 6h6v6h-6zM4 16h6v4H4zM14 16h6v4h-6z"/></svg></a>
+      <a href="hierarchy.html" class="item active" title="Hierarchy"><svg class="ico" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="6" rx="1.3"/><rect x="3" y="15" width="6" height="6" rx="1.3"/><rect x="15" y="15" width="6" height="6" rx="1.3"/><path d="M12 9v3M6 15v-3h12v3"/></svg></a>
+      <a href="runs.html" class="item" title="Runs"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M10.2 8.7l5.4 3.3-5.4 3.3z"/></svg></a>
+      <a href="workflows.html" class="item" title="Workflows"><svg class="ico" viewBox="0 0 24 24"><path d="M5 7h6m0 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM5 17h6m0 0a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM5 7v10"/></svg></a>
+    </nav>
+    <div class="spacer"></div>
+    <a href="#" class="item" style="width: 40px; height: 40px;" title="Help" data-quiet="Help"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.4v.3M12 17h.01"/></svg></a>
+    <a href="#" class="item" style="width: 40px; height: 40px;" title="Settings" data-quiet="Settings"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .4 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.4 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .4-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.4-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.4H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.4l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.4 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></a>
+    <div class="me" title="Tom Heffes">TH</div>
+  </aside>
+
+  <main class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="brand-block">
+        <div class="logo">fs</div>
+        <button class="ws-switch">Northgate <svg class="ico-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l5 5 5-5"/></svg></button>
+      </div>
+      <div class="search">
+        <svg class="ico-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input placeholder="Find a cost centre by code, name or owner…" />
+        <span class="kbd">/</span>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn" title="History"><svg class="ico" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5M12 7v6l4 2"/></svg></button>
+        <button class="icon-btn" title="Notifications"><svg class="ico" viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9zM10 21a2 2 0 0 0 4 0"/></svg></button>
+        <div class="user-chip" title="Tom Heffes">TH</div>
+      </div>
+    </div>
+
+    <div class="page">
+
+      <nav class="crumbs">
+        <a href="./">Transfer Pricing</a>
+        <span class="sep">/</span>
+        <a href="hierarchy.html">Hierarchy review</a>
+        <span class="sep">/</span>
+        <span class="here">Cost centres</span>
+      </nav>
+
+      <!-- Header -->
+      <div class="page-head" data-reveal>
+        <div>
+          <div class="page-eyebrow">
+            <span class="status-pill in-progress">Reviewing</span>
+            <span>assigned to <b style="color: var(--ink);">John Doe</b> | due <b style="color: var(--ink);">21 Mar 2026</b></span>
+          </div>
+          <h1 class="page-title">Cost-centre <em>hierarchy.</em></h1>
+          <p class="page-sub">Reparent cost centres into the right grouping. Changes propagate to the cost matrix on save. Drag a node and drop it into a new parent. Arkk validates the move and shows the effect.</p>
+        </div>
+        <div class="page-meta">
+          <a href="#" class="btn ghost" data-open-treemap>Tree map ↗</a>
+          <button class="btn"><svg class="ico" viewBox="0 0 24 24"><path d="M21 12H3M21 6H3M21 18H3"/></svg> Expand all</button>
+          <button class="btn"><svg class="ico" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> New cost centre</button>
+          <button class="btn primary" data-commit>Approve hierarchy</button>
+        </div>
+      </div>
+
+      <!-- Strip -->
+      <div class="strip" data-reveal>
+        <div class="score-card">
+          <div class="label">Cost centres in hierarchy</div>
+          <div class="v" data-count="182"></div>
+          <div class="sub">across 7 top-level rollups</div>
+        </div>
+        <div class="score-card" style="border-color: var(--brand-line); background: linear-gradient(180deg, var(--brand-soft), var(--surface));">
+          <div class="label" style="color: var(--brand-2);">Unmapped</div>
+          <div class="v" style="color: var(--brand-2);" data-count="5"><span class="delta no-icon" style="background: var(--surface); border: 1px solid var(--brand-line); color: var(--brand-2);">+2 new</span></div>
+          <div class="sub" style="color: var(--brand-2);">CCs without a parent rollup</div>
+        </div>
+        <div class="score-card">
+          <div class="label">Changes pending review</div>
+          <div class="v" data-count="12"></div>
+          <div class="sub">7 moves | 3 renames | 2 deletes</div>
+        </div>
+        <div class="score-card">
+          <div class="label">Last approved</div>
+          <div class="v" style="font-size: 28px;">21 Feb</div>
+          <div class="sub">by Maria R. | v 4.2 of hierarchy</div>
+        </div>
+      </div>
+
+      <div class="split">
+        <!-- Main tree -->
+        <div data-reveal>
+          <div class="hier">
+            <div class="hier-head">
+              <div class="hier-search">
+                <svg class="ico-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+                <input placeholder="Find a cost centre…" value="5152" />
+                <span class="kbd">/</span>
+              </div>
+              <div class="row gap-2">
+                <span class="count">182 CCs</span>
+                <span class="count" style="color: var(--peach-ink); border-color: var(--peach-line); background: var(--peach-soft);">5 unmapped</span>
+                <button class="btn ghost" style="padding: 4px 8px; font-size: 12px;">Filter</button>
+              </div>
+            </div>
+
+            <div class="tree">
+              <a href="#" data-quiet="Parent level view" style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--brand); padding: 6px 10px;">
+                <svg class="ico-xs" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg> Show parent level
+              </a>
+
+              <div class="tree-row group">
+                <button class="twirl"><svg class="ico-xs" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5"/></svg></button>
+                <span class="twirl empty"></span>
+                <div class="label">
+                  <svg class="ico-xs" style="color: var(--brand);" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                  <span class="name">Finance &amp; IT services</span>
+                  <span class="id mono">rollup</span>
+                </div>
+                <div class="meta">
+                  <span class="count">42 CCs | £ 86.2m</span>
+                  <div class="actions">
+                    <button class="icon-btn"><svg class="ico-xs" viewBox="0 0 24 24"><path d="M4 20h4L20.7 7.3a2 2 0 0 0 0-2.8l-1.2-1.2a2 2 0 0 0-2.8 0L4 16z"/></svg></button>
+                    <button class="icon-btn"><svg class="ico-xs" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="indent">
+                <div class="tree-row">
+                  <button class="twirl"><svg class="ico-xs" viewBox="0 0 24 24"><path d="M9 7l5 5-5 5"/></svg></button>
+                  <span class="twirl empty"></span>
+                  <div class="label"><span class="id mono">53001</span> <span class="name">Chief Financial Officer</span></div>
+                  <div class="meta"><span class="count">8 CCs</span></div>
+                </div>
+
+                <div class="tree-row">
+                  <button class="twirl"><svg class="ico-xs" viewBox="0 0 24 24"><path d="M9 7l5 5-5 5"/></svg></button>
+                  <span class="twirl empty"></span>
+                  <div class="label"><span class="id mono">50250</span> <span class="name">Network ops | IT operations</span></div>
+                  <div class="meta"><span class="count">12 CCs</span></div>
+                </div>
+
+                <div class="tree-row">
+                  <button class="twirl"><svg class="ico-xs" viewBox="0 0 24 24"><path d="M9 7l5 5-5 5"/></svg></button>
+                  <span class="twirl empty"></span>
+                  <div class="label"><span class="id mono">51500</span> <span class="name">Partner platforms &amp; business application</span></div>
+                  <div class="meta"><span class="count">7 CCs</span></div>
+                </div>
+
+                <div class="tree-row">
+                  <button class="twirl" aria-expanded="true"><svg class="ico-xs" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5"/></svg></button>
+                  <span class="twirl empty"></span>
+                  <div class="label"><span class="id mono">52000</span> <span class="name">New operations rollup</span></div>
+                  <div class="meta"><span class="count">9 CCs | £ 12.4m</span></div>
+                </div>
+
+                <div class="indent">
+                  <div class="tree-row"><span class="twirl empty"></span><span class="twirl empty"></span><div class="label"><span class="id mono">5170</span> <span class="name">New cost centre</span></div><div class="meta"><span class="count">£ 0</span></div></div>
+                  <div class="tree-row"><span class="twirl empty"></span><span class="twirl empty"></span><div class="label"><span class="id mono">5159</span> <span class="name">Wholesale retail COS elimination | PPBA</span></div><div class="meta"><span class="count">£ 2.1m</span></div></div>
+                  <div class="tree-row"><span class="twirl empty"></span><span class="twirl empty"></span><div class="label"><span class="id mono">5150</span> <span class="name">SEP &amp; API evolution</span></div><div class="meta"><span class="count">£ 1.8m</span></div></div>
+                  <div class="tree-row"><span class="twirl empty"></span><span class="twirl empty"></span><div class="label"><span class="id mono">5151</span> <span class="name">Business IT development</span></div><div class="meta"><span class="count">£ 3.4m</span></div></div>
+
+                  <!-- Drop position -->
+                  <div class="drop-line" aria-hidden="true"></div>
+
+                  <div class="tree-row"><span class="twirl empty"></span><span class="twirl empty"></span><div class="label"><span class="id mono">5153</span> <span class="name">PP testing services</span></div><div class="meta"><span class="count">£ 0.9m</span></div></div>
+                </div>
+
+                <div class="tree-row">
+                  <button class="twirl"><svg class="ico-xs" viewBox="0 0 24 24"><path d="M9 7l5 5-5 5"/></svg></button>
+                  <span class="twirl empty"></span>
+                  <div class="label"><span class="id mono">54200</span> <span class="name">Group treasury</span></div>
+                  <div class="meta"><span class="count">3 CCs</span></div>
+                </div>
+              </div>
+
+              <!-- Sibling rollups -->
+              <div class="tree-row group" style="margin-top: 18px;">
+                <button class="twirl"><svg class="ico-xs" viewBox="0 0 24 24"><path d="M9 7l5 5-5 5"/></svg></button>
+                <span class="twirl empty"></span>
+                <div class="label">
+                  <svg class="ico-xs" style="color: var(--brand);" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                  <span class="name">Sales &amp; Marketing</span>
+                  <span class="id mono">rollup</span>
+                </div>
+                <div class="meta"><span class="count">38 CCs | £ 41.0m</span></div>
+              </div>
+              <div class="tree-row group">
+                <button class="twirl"><svg class="ico-xs" viewBox="0 0 24 24"><path d="M9 7l5 5-5 5"/></svg></button>
+                <span class="twirl empty"></span>
+                <div class="label">
+                  <svg class="ico-xs" style="color: var(--brand);" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                  <span class="name">Central services</span>
+                  <span class="id mono">rollup</span>
+                </div>
+                <div class="meta"><span class="count">28 CCs | £ 22.8m</span></div>
+              </div>
+              <div class="tree-row group">
+                <button class="twirl"><svg class="ico-xs" viewBox="0 0 24 24"><path d="M9 7l5 5-5 5"/></svg></button>
+                <span class="twirl empty"></span>
+                <div class="label">
+                  <svg class="ico-xs" style="color: var(--brand);" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                  <span class="name">BU Operations</span>
+                  <span class="id mono">rollup</span>
+                </div>
+                <div class="meta"><span class="count">52 CCs | £ 96.4m</span></div>
+              </div>
+
+              <!-- Unmapped cost centres: no parent rollup. Own section (not
+                   nested under any group row) so "5 unmapped" / the strip
+                   stat have something real to point at, and each row is a
+                   genuine drag source into any rollup below - the whole
+                   point of "reparent cost centres into the right grouping". -->
+              <div class="tree-row group unmapped-head" id="unmapped-section" style="margin-top: 18px; background: var(--peach-soft); border-color: var(--peach-line);">
+                <span class="twirl empty"></span>
+                <span class="twirl empty"></span>
+                <div class="label">
+                  <svg class="ico-xs" style="color: var(--peach-ink);" viewBox="0 0 24 24"><path d="M12 8v4M12 16h.01M10.3 4l-7.6 13c-.8 1.5.3 3 2 3h15.4c1.7 0 2.8-1.5 2-3L13.7 4a2 2 0 0 0-3.4 0z"/></svg>
+                  <span class="name" style="color: var(--peach-ink);">Unmapped</span>
+                  <span class="id mono">no parent rollup</span>
+                </div>
+                <div class="meta"><span class="count" style="color: var(--peach-ink); border-color: var(--peach-line); background: var(--surface);">5 CCs</span></div>
+              </div>
+              <div class="indent" id="unmapped-list">
+                <div class="tree-row"><span class="twirl empty"></span><span class="twirl empty"></span><div class="label"><span class="id mono">5601</span> <span class="name">Northgate Labs pilot</span></div><div class="meta"><span class="count">£ 0.4m</span></div></div>
+                <div class="tree-row"><span class="twirl empty"></span><span class="twirl empty"></span><div class="label"><span class="id mono">5602</span> <span class="name">Connect Bidco integration</span></div><div class="meta"><span class="count">£ 1.1m</span></div></div>
+                <div class="tree-row"><span class="twirl empty"></span><span class="twirl empty"></span><div class="label"><span class="id mono">5603</span> <span class="name">DOOEL Skopje shared services</span></div><div class="meta"><span class="count">£ 0.7m</span></div></div>
+                <div class="tree-row"><span class="twirl empty"></span><span class="twirl empty"></span><div class="label"><span class="id mono">5604</span> <span class="name">Legacy solutions wind-down</span></div><div class="meta"><span class="count">£ 0.2m</span></div></div>
+                <div class="tree-row"><span class="twirl empty"></span><span class="twirl empty"></span><div class="label"><span class="id mono">5605</span> <span class="name">Group treasury | new entity onboarding</span></div><div class="meta"><span class="count">£ 0.9m</span></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Side panel -->
+        <aside class="side-card">
+
+          <div class="card flush" data-reveal>
+            <div class="card-head">
+              <div class="card-title"><span class="num-badge">MOVE</span> <span id="move-card-title">Selection details</span></div>
+              <span class="unsaved-indicator" hidden>Unsaved</span>
+            </div>
+            <!-- Empty state: shown until a real drag or "Move to..." action
+                 happens - the card previously always claimed a reparent was
+                 "in progress" on a fresh page load, which wasn't true.
+                 Redesigned per Group 2: dense + useful (selection details /
+                 unmapped CCs / rollup cost meters), not a static narrative. -->
+            <div id="move-empty-state" style="padding: 14px 18px 18px;">
+              <p class="muted" style="margin: 0 0 12px; font-size: 12px;">Select or drag a cost centre below to see reparenting details here, or use a row's <b style="color: var(--ink);">Move to...</b> control.</p>
+              <div class="row gap-2" style="font-size: 12px; color: var(--peach-ink); background: var(--peach-soft); border: 1px solid var(--peach-line); border-radius: 8px; padding: 10px 12px;">
+                <svg class="ico-xs" viewBox="0 0 24 24"><path d="M12 8v4M12 16h.01M10.3 4l-7.6 13c-.8 1.5.3 3 2 3h15.4c1.7 0 2.8-1.5 2-3L13.7 4a2 2 0 0 0-3.4 0z"/></svg>
+                <span><b>5 unmapped</b> cost centres need a rollup | <a href="#unmapped-section" id="move-goto-unmapped" style="color: inherit; text-decoration: underline;">jump to them</a></span>
+              </div>
+            </div>
+            <div id="move-active-state" style="padding: 14px 18px 18px; display: none;">
+              <p class="muted" style="margin: 0; font-size: 12px;">You are moving <b style="color: var(--ink);" class="mono" id="move-cc-label">5152 PP support services</b> from its current parent to a new rollup.</p>
+
+              <div class="move-summary">
+                <div class="nest">
+                  <div class="id">FROM | ROLLUP</div>
+                  <div class="nm" id="move-from-nm">Finance &amp; IT services</div>
+                  <span class="count" style="margin-top: 4px;" id="move-from-code">52000 New ops rollup</span>
+                </div>
+                <div class="arr">
+                  <svg class="ico-sm" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </div>
+                <div class="nest to">
+                  <div class="id" style="color: var(--brand);">TO | ROLLUP</div>
+                  <div class="nm" id="move-to-nm">Finance &amp; IT services</div>
+                  <span class="count" style="margin-top: 4px; background: var(--surface);" id="move-to-code">52000 New ops rollup</span>
+                </div>
+              </div>
+
+              <hr class="hr" style="margin: 14px 0;" />
+
+              <div class="row gap-3" style="font-size: 12px; color: var(--ink-2);" id="move-effect-note">
+                <svg class="ico-xs" style="color: var(--mint-ink);" viewBox="0 0 24 24"><path d="M5 12l4 4 10-10"/></svg>
+                <span id="move-effect-text">Same rollup | CC reordered between siblings. Matrix unaffected.</span>
+              </div>
+
+              <div style="display: flex; gap: 8px; margin-top: 14px;">
+                <button class="btn soft" style="flex: 1; justify-content: center;">Cancel</button>
+                <button class="btn primary" style="flex: 1; justify-content: center;">Commit move</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Distribution by group -->
+
+          <div class="card flush" data-reveal>
+            <div class="card-head">
+              <div class="card-title"><span class="num-badge">SHAPE</span> CC cost by rollup</div>
+              <a class="btn ghost" href="#" data-open-treemap style="padding: 4px 8px; font-size: 12px;">Treemap ↗</a>
+            </div>
+            <div style="padding: 14px 18px 18px;">
+              <p class="muted" style="margin: 0 0 4px; font-size: 12px;">Share of gross cost across top-level rollups</p>
+              <div class="grp-dist">
+                <!-- Group 3 fix: width = value / max(all values), verified per bar
+                     (max = BU Operations £96.4m). Square legend swatches removed -
+                     color now lives on the bar itself + a plain text label
+                     (shape law: no decorative squares/dots standing in for a key). -->
+                <div class="grp-row"><span class="nm">Finance &amp; IT</span><div class="bar-track" style="height: 8px; background: var(--bg-2); border-radius: 4px; border: 1px solid var(--line-2);"><div class="bar-fill" data-to="89.4%" style="height: 100%; background: var(--brand); border-radius: 4px; width: 0%;"></div></div><span class="num mono" style="text-align: right; color: var(--ink); font-size: 12px;">£ 86.2m</span></div>
+                <div class="grp-row"><span class="nm">BU Operations</span><div class="bar-track" style="height: 8px; background: var(--bg-2); border-radius: 4px; border: 1px solid var(--line-2);"><div class="bar-fill" data-to="100%" style="height: 100%; background: oklch(58% 0.16 220); border-radius: 4px; width: 0%;"></div></div><span class="num mono" style="text-align: right; color: var(--ink); font-size: 12px;">£ 96.4m</span></div>
+                <div class="grp-row"><span class="nm">Sales &amp; Marketing</span><div class="bar-track" style="height: 8px; background: var(--bg-2); border-radius: 4px; border: 1px solid var(--line-2);"><div class="bar-fill mint" data-to="42.5%" style="height: 100%; border-radius: 4px; width: 0%;"></div></div><span class="num mono" style="text-align: right; color: var(--ink); font-size: 12px;">£ 41.0m</span></div>
+                <div class="grp-row"><span class="nm">Central</span><div class="bar-track" style="height: 8px; background: var(--bg-2); border-radius: 4px; border: 1px solid var(--line-2);"><div class="bar-fill peach" data-to="23.7%" style="height: 100%; border-radius: 4px; width: 0%;"></div></div><span class="num mono" style="text-align: right; color: var(--ink); font-size: 12px;">£ 22.8m</span></div>
+                <div class="grp-row"><span class="nm">R&amp;D</span><div class="bar-track" style="height: 8px; background: var(--bg-2); border-radius: 4px; border: 1px solid var(--line-2);"><div class="bar-fill" data-to="14.7%" style="background: var(--lilac); border-radius: 4px; width: 0%; height: 100%;"></div></div><span class="num mono" style="text-align: right; color: var(--ink); font-size: 12px;">£ 14.2m</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent moves -->
+          <div class="card flush" data-reveal>
+            <div class="card-head">
+              <div class="card-title"><span class="num-badge">LOG</span> Recent hierarchy moves</div>
+              <a class="btn ghost" href="#" data-quiet="Hierarchy moves log" style="padding: 4px 8px; font-size: 12px;">All →</a>
+            </div>
+            <div style="padding: 14px 18px 18px;">
+              <div class="recent-moves">
+                <div class="move-row">
+                  <div class="iconz"><svg class="ico-xs" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+                  <div><b class="mono">5170</b> | moved into <b>New ops</b></div>
+                  <span class="time">2m</span>
+                </div>
+                <div class="move-row">
+                  <div class="iconz" style="background: var(--mint-soft); color: var(--mint-ink);"><svg class="ico-xs" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div>
+                  <div><b class="mono">5180</b> | created as new CC</div>
+                  <span class="time">1h</span>
+                </div>
+                <div class="move-row">
+                  <div class="iconz" style="background: var(--peach-soft); color: var(--peach-ink);"><svg class="ico-xs" viewBox="0 0 24 24"><path d="M4 20h4L20.7 7.3a2 2 0 0 0 0-2.8l-1.2-1.2a2 2 0 0 0-2.8 0L4 16z"/></svg></div>
+                  <div><b class="mono">5151</b> | renamed to "Business IT development"</div>
+                  <span class="time">3h</span>
+                </div>
+                <div class="move-row">
+                  <div class="iconz"><svg class="ico-xs" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+                  <div><b class="mono">5159</b> | moved from <b>Central</b> to <b>New ops</b></div>
+                  <span class="time">Yest.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>
+<!-- ============================================================
+     Treemap modal — opens on Tree map ↗ click
+     Slice-and-dice layout sized from each rollup's gross cost.
+     ============================================================ -->
+<div class="treemap-modal" id="treemap-modal" role="dialog" aria-hidden="true" aria-labelledby="treemap-title">
+  <div class="treemap-card">
+    <div class="treemap-head">
+      <div>
+        <div class="treemap-eyebrow">Cost-centre hierarchy | Q4 2024 | Northgate</div>
+        <h2 class="treemap-title" id="treemap-title">Treemap of £271.6M across 7 rollups</h2>
+      </div>
+      <div class="treemap-actions">
+        <button class="btn">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+          Export
+        </button>
+        <button class="treemap-close" id="treemap-close" aria-label="Close treemap">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M6 6l12 12M6 18L18 6"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="treemap-body">
+      <!-- Treemap visualisation -->
+      <div class="treemap-viz" role="img" aria-label="Treemap of cost-centre rollups">
+        <!-- Group 3 fix: every cell's AREA (width% x height%) now equals its
+             value / £271.6M true total, verified per cell (was a flat 37/33/30
+             row1 + 55/27/18 row2 grid unrelated to the £ figures - e.g. BU
+             Operations read as 25.9% of the treemap's area while actually
+             owning 35.5% of the cost). Row 1 = the four largest rollups
+             (£246.4M, so height = 246.4/271.6 = 90.7% of the viz); Sales &
+             Marketing / Central services share a column, split vertically by
+             their own value ratio. Row 2 = the three smallest (£25.2M ->
+             9.3% height), widths split by value within the row. -->
+        <div class="tm-cell lg" style="top: 0; left: 0; width: 39.1%; height: 90.7%; background: linear-gradient(135deg, oklch(48% 0.21 256), oklch(54% 0.19 254));">
+          <div class="tm-name">BU Operations</div>
+          <div class="tm-meta">52 CCs | 28 entities</div>
+          <div class="tm-val">£96.4M</div>
+        </div>
+        <div class="tm-cell lg" style="top: 0; left: 39.1%; width: 35.0%; height: 90.7%; background: linear-gradient(135deg, oklch(56% 0.18 254), oklch(62% 0.16 254));">
+          <div class="tm-name">Finance &amp; IT services</div>
+          <div class="tm-meta">42 CCs | 19 entities</div>
+          <div class="tm-val">£86.2M</div>
+        </div>
+        <div class="tm-cell md" style="top: 0; left: 74.1%; width: 25.9%; height: 58.3%; background: linear-gradient(135deg, oklch(58% 0.15 200), oklch(64% 0.14 210));">
+          <div class="tm-name">Sales &amp; Marketing</div>
+          <div class="tm-meta">38 CCs</div>
+          <div class="tm-val">£41.0M</div>
+        </div>
+        <div class="tm-cell sm" style="top: 58.3%; left: 74.1%; width: 25.9%; height: 32.4%; background: linear-gradient(135deg, oklch(58% 0.13 162), oklch(64% 0.12 162));">
+          <div class="tm-name">Central services</div>
+          <div class="tm-meta">28 CCs</div>
+          <div class="tm-val">£22.8M</div>
+        </div>
+
+        <div class="tm-cell sm" style="top: 90.7%; left: 0; width: 56.3%; height: 9.3%; background: linear-gradient(135deg, oklch(60% 0.13 220), oklch(66% 0.12 220));">
+          <div class="tm-name">R&amp;D &amp; engineering</div>
+          <div class="tm-meta">22 CCs | 14 entities</div>
+          <div class="tm-val">£14.2M</div>
+        </div>
+        <div class="tm-cell sm" style="top: 90.7%; left: 56.3%; width: 31.0%; height: 9.3%; background: linear-gradient(135deg, oklch(58% 0.13 295), oklch(64% 0.12 295));">
+          <div class="tm-name">Group treasury</div>
+          <div class="tm-meta">8 CCs</div>
+          <div class="tm-val">£7.8M</div>
+        </div>
+        <div class="tm-cell sm" style="top: 90.7%; left: 87.3%; width: 12.7%; height: 9.3%; background: linear-gradient(135deg, oklch(66% 0.10 254), oklch(72% 0.09 254));">
+          <div class="tm-name">Legal &amp; compliance</div>
+          <div class="tm-val">£3.2M</div>
+        </div>
+      </div>
+
+      <!-- Side breakdown -->
+      <aside class="treemap-side">
+        <h4>Rollups by cost</h4>
+        <div class="tm-legend-row" style="border-left-color: oklch(48% 0.21 256);">
+          <div class="nm">BU Operations<small>52 cost centres</small></div>
+          <div class="v">£96.4M<small>35.5%</small></div>
+        </div>
+        <div class="tm-legend-row" style="border-left-color: oklch(56% 0.18 254);">
+          <div class="nm">Finance &amp; IT services<small>42 cost centres</small></div>
+          <div class="v">£86.2M<small>31.7%</small></div>
+        </div>
+        <div class="tm-legend-row" style="border-left-color: oklch(58% 0.15 200);">
+          <div class="nm">Sales &amp; Marketing<small>38 cost centres</small></div>
+          <div class="v">£41.0M<small>15.1%</small></div>
+        </div>
+        <div class="tm-legend-row" style="border-left-color: oklch(58% 0.13 162);">
+          <div class="nm">Central services<small>28 cost centres</small></div>
+          <div class="v">£22.8M<small>8.4%</small></div>
+        </div>
+        <div class="tm-legend-row" style="border-left-color: oklch(60% 0.13 220);">
+          <div class="nm">R&amp;D &amp; engineering<small>22 cost centres</small></div>
+          <div class="v">£14.2M<small>5.2%</small></div>
+        </div>
+        <div class="tm-legend-row" style="border-left-color: oklch(58% 0.13 295);">
+          <div class="nm">Group treasury<small>8 cost centres</small></div>
+          <div class="v">£7.8M<small>2.9%</small></div>
+        </div>
+        <div class="tm-legend-row" style="border-left-color: oklch(66% 0.10 254);">
+          <div class="nm">Legal &amp; compliance<small>2 cost centres</small></div>
+          <div class="v">£3.2M<small>1.2%</small></div>
+        </div>
+      </aside>
+    </div>
+
+    <div class="treemap-foot">
+      <span>Click a rectangle to drill into a rollup | 192 cost centres total</span>
+      <span class="total"><b>£271.6M</b> total | Q4 2024</span>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const modal = document.getElementById('treemap-modal');
+  const closeBtn = document.getElementById('treemap-close');
+  if (!modal) return;
+
+  function open(e) {
+    if (e) e.preventDefault();
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+  }
+  function close() {
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+  }
+
+  // Any element with data-open-treemap opens the modal
+  document.querySelectorAll('[data-open-treemap]').forEach((el) => {
+    el.addEventListener('click', open);
+  });
+
+  closeBtn && closeBtn.addEventListener('click', close);
+
+  // Click backdrop to close
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) close();
+  });
+
+  // Escape to close
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal.classList.contains('open')) close();
+  });
+})();
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  'use strict';
+  if (!window.Arkk || !window.ArkkData) return;
+  var Arkk = window.Arkk, D = window.ArkkData, el = Arkk.el, icon = Arkk.icon, clear = Arkk.clear;
+
+  /* Icon-first buttons (svg then " Label" text node) - Arkk.setLeadingText
+     assumes text-first markup, so relabel via the trailing text node here. */
+  function setTrailingText(node, text) {
+    var last = node.lastChild;
+    if (last && last.nodeType === 3) last.nodeValue = ' ' + text;
+    else node.appendChild(document.createTextNode(' ' + text));
+  }
+
+  var hierStore = Arkk.store('arkk.hierarchy.v1', function () { return { moves: [], approved: false, newCCs: [] }; });
+
+  /* ---- Expandable sub-parents / sibling rollups ----
+     Several rows carry a twirl chevron and a CC count but shipped with no
+     child markup, so the shared twirl handler (which reads nextElementSibling
+     at click time) had nothing to open. Give each a real, collapsed child
+     list built from a deterministic Northgate leaf set so every chevron in
+     the tree expands and collapses. Deferred to window.load so it runs AFTER
+     arkk.js initHierarchy has captured the original nested .indent for its
+     drag-reparent leaves (injecting during DOMContentLoaded would shift which
+     .indent .indent it matches). The twirl handlers arkk.js binds read
+     nextElementSibling lazily at click time, so they pick up the injected
+     .indent on first click. */
+  function buildLazyChildren() {
+    var LEAF_NAMES = [
+      'Payroll and benefits', 'Statutory reporting', 'Treasury operations', 'Tax compliance',
+      'Internal audit', 'Procurement', 'Facilities management', 'Vendor management',
+      'Revenue assurance', 'Credit control', 'Financial planning', 'Management reporting',
+      'Regulatory filings', 'Cash management', 'Fixed asset accounting', 'Accounts payable',
+      'Accounts receivable', 'Group consolidation'
+    ];
+    function hashStr(s) { var h = 0; for (var i = 0; i < s.length; i++) { h = ((h << 5) - h + s.charCodeAt(i)) | 0; } return Math.abs(h); }
+    var buttons = document.querySelectorAll('.tree .tree-row > button.twirl:not(.empty)');
+    Array.prototype.forEach.call(buttons, function (btn) {
+      var row = btn.closest('.tree-row');
+      var next = row.nextElementSibling;
+      if (next && next.classList.contains('indent')) return; // already has children
+      var countEl = row.querySelector('.meta .count');
+      var m = countEl ? (countEl.textContent.match(/(\d+)\s*CCs/) || countEl.textContent.match(/(\d+)/)) : null;
+      var declared = m ? parseInt(m[1], 10) : 4;
+      var show = Math.max(2, Math.min(declared, 5));
+      var seedBase = hashStr((row.querySelector('.name') || {}).textContent || 'cc');
+      var codeBase = 5200 + (seedBase % 700);
+      var indent = el('div', { cls: 'indent', style: 'max-height:0; overflow:hidden;' });
+      for (var i = 0; i < show; i++) {
+        var seed = seedBase + i * 37;
+        var leaf = el('div', { cls: 'tree-row' });
+        leaf.appendChild(el('span', { cls: 'twirl empty' }));
+        leaf.appendChild(el('span', { cls: 'twirl empty' }));
+        var label = el('div', { cls: 'label' });
+        label.appendChild(el('span', { cls: 'id mono', text: String(codeBase + i * 3) }));
+        label.appendChild(document.createTextNode(' '));
+        label.appendChild(el('span', { cls: 'name', text: LEAF_NAMES[seed % LEAF_NAMES.length] }));
+        leaf.appendChild(label);
+        var meta = el('div', { cls: 'meta' });
+        meta.appendChild(el('span', { cls: 'count', text: '£ ' + (((seed % 90) + 4) / 10).toFixed(1) + 'm' }));
+        leaf.appendChild(meta);
+        indent.appendChild(leaf);
+      }
+      if (declared > show) {
+        var moreRow = el('div', { cls: 'tree-row' });
+        moreRow.appendChild(el('span', { cls: 'twirl empty' }));
+        moreRow.appendChild(el('span', { cls: 'twirl empty' }));
+        var moreLabel = el('div', { cls: 'label' });
+        moreLabel.appendChild(el('span', { cls: 'name muted', text: (declared - show) + ' more cost centres', style: 'color: var(--ink-3);' }));
+        moreRow.appendChild(moreLabel);
+        indent.appendChild(moreRow);
+      }
+      row.insertAdjacentElement('afterend', indent);
+    });
+  }
+  /* =====================================================================
+     GATE 1 fix (Group 2): full drag-reparent + keyboard Move-to + a
+     reactive MOVE card. arkk.js's initHierarchy() wires pointer-drag only
+     for indent.querySelector('.indent .indent') - the 5 original New-ops
+     leaves - captured once at DOMContentLoaded, before buildLazyChildren()
+     (above) injects every other row's children at window.load. Client
+     repro: "nothing is movable... not just the New-ops leaves." Runs
+     after buildLazyChildren so it sees the complete tree (every
+     sub-parent/rollup's synthetic children + the Unmapped section).
+     ===================================================================== */
+  function isLeafRow(row) {
+    if (!row || !row.classList.contains('tree-row')) return false;
+    if (row.classList.contains('group') || row.classList.contains('dragging')) return false;
+    var chevron = row.querySelector('button.twirl:not(.empty)');
+    return !chevron;
+  }
+  function parentRowOf(row) {
+    var indent = row.parentElement;
+    if (!indent || !indent.classList.contains('indent')) return null;
+    var prev = indent.previousElementSibling;
+    return prev && prev.classList.contains('tree-row') ? prev : null;
+  }
+  function rowLabel(row) {
+    if (!row) return 'Unmapped';
+    var nameEl = row.querySelector('.label .name');
+    return nameEl ? nameEl.textContent.trim() : 'Unknown';
+  }
+  function rowCode(row) {
+    if (!row) return '';
+    var idEl = row.querySelector('.label .id');
+    return idEl ? idEl.textContent.trim() : '';
+  }
+  function ccLabel(row) {
+    var code = rowCode(row), name = rowLabel(row);
+    return (code ? code + ' ' : '') + name;
+  }
+  function containerRows() {
+    /* Every row that owns an .indent - valid reparent destinations. */
+    return Array.prototype.filter.call(document.querySelectorAll('.tree .tree-row'), function (r) {
+      var n = r.nextElementSibling;
+      return n && n.classList.contains('indent');
+    });
+  }
+  function indentOf(row) { return row.nextElementSibling; }
+  function indentIsOpen(ind) {
+    /* Two indents ship visible with no inline collapse (Finance & IT's,
+       New-ops') and the Unmapped section is never collapsible - all read
+       as "open" by default. Every buildLazyChildren indent starts with
+       inline max-height:0 and only clears it (to 'none') once its chevron
+       has been clicked - the drop-target scan below only offers indents a
+       user can actually see. */
+    return ind.style.maxHeight === '' || ind.style.maxHeight === 'none';
+  }
+
+  function updateMoveCard(ccRow, fromRow, toRow) {
+    var titleEl = document.getElementById('move-card-title');
+    var emptyState = document.getElementById('move-empty-state');
+    var activeState = document.getElementById('move-active-state');
+    var ccLabelEl = document.getElementById('move-cc-label');
+    var fromNm = document.getElementById('move-from-nm');
+    var toNm = document.getElementById('move-to-nm');
+    var fromCode = document.getElementById('move-from-code');
+    var toCode = document.getElementById('move-to-code');
+    var effectText = document.getElementById('move-effect-text');
+    var unsavedTag = document.querySelector('.card-head .unsaved-indicator');
+    if (titleEl) titleEl.textContent = 'Reparenting in progress';
+    if (emptyState) emptyState.style.display = 'none';
+    if (activeState) activeState.style.display = '';
+    if (ccLabelEl) ccLabelEl.textContent = ccLabel(ccRow);
+    if (fromNm) fromNm.textContent = rowLabel(fromRow);
+    if (toNm) toNm.textContent = rowLabel(toRow);
+    if (fromCode) fromCode.textContent = fromRow ? ccLabel(fromRow) : 'No parent rollup';
+    if (toCode) toCode.textContent = toRow ? ccLabel(toRow) : 'No parent rollup';
+    var sameParent = fromRow === toRow;
+    if (effectText) {
+      effectText.textContent = sameParent
+        ? 'Same rollup | CC reordered between siblings. Matrix unaffected.'
+        : 'Different rollup | matrix cells for the new intersection will be created on save.';
+    }
+    if (unsavedTag) unsavedTag.hidden = false;
+  }
+  window.__hierResetMoveCard = function resetMoveCard() {
+    var titleEl = document.getElementById('move-card-title');
+    var emptyState = document.getElementById('move-empty-state');
+    var activeState = document.getElementById('move-active-state');
+    var unsavedTag = document.querySelector('.card-head .unsaved-indicator');
+    if (titleEl) titleEl.textContent = 'Selection details';
+    if (emptyState) emptyState.style.display = '';
+    if (activeState) activeState.style.display = 'none';
+    if (unsavedTag) unsavedTag.hidden = true;
+  };
+
+  /* Shared by drag-drop AND keyboard Move-to, so both paths produce the
+     same MOVE-card update + Commit/Cancel + persistence behaviour. */
+  function applyMove(ccRow, targetIndent, beforeRow) {
+    var fromRow = parentRowOf(ccRow);
+    var toRow = targetIndent.previousElementSibling && targetIndent.previousElementSibling.classList.contains('tree-row') ? targetIndent.previousElementSibling : null;
+    if (beforeRow) targetIndent.insertBefore(ccRow, beforeRow);
+    else targetIndent.appendChild(ccRow);
+    updateMoveCard(ccRow, fromRow, toRow);
+    ccRow.scrollIntoView({ block: 'nearest' });
+  }
+
+  function wireDrag(row, treeEl, dropLine) {
+    row.style.cursor = 'grab';
+    row.addEventListener('pointerdown', function (e) {
+      if (e.button !== undefined && e.button !== 0) return;
+      if (e.target.closest('.actions') || e.target.closest('select')) return;
+      var startY = e.clientY;
+      var moved = false;
+
+      function onMove(ev) {
+        var dy = ev.clientY - startY;
+        if (!moved && Math.abs(dy) < 4) return;
+        if (!moved) {
+          moved = true;
+          row.classList.add('dragging-live');
+          row.style.transition = 'none';
+          row.style.position = 'relative';
+          row.style.zIndex = '5';
+          row.style.background = 'var(--surface)';
+          row.style.boxShadow = 'var(--shadow-pop)';
+        }
+        row.style.transform = 'translateY(' + dy + 'px)';
+
+        var nearest = null, nearestDist = Infinity, placeBefore = true;
+        Array.prototype.forEach.call(treeEl.querySelectorAll('.indent'), function (ind) {
+          if (!indentIsOpen(ind)) return;
+          Array.prototype.forEach.call(ind.children, function (sib) {
+            if (sib === row || !sib.classList.contains('tree-row') || sib.classList.contains('dragging')) return;
+            var r = sib.getBoundingClientRect();
+            var mid = r.top + r.height / 2;
+            var d = Math.abs(ev.clientY - mid);
+            if (d < nearestDist) { nearestDist = d; nearest = sib; placeBefore = ev.clientY < mid; }
+          });
+        });
+        if (nearest && nearestDist < 400) {
+          if (placeBefore) nearest.insertAdjacentElement('beforebegin', dropLine);
+          else nearest.insertAdjacentElement('afterend', dropLine);
+          dropLine.style.display = 'block';
+        } else {
+          dropLine.style.display = 'none';
+        }
+      }
+
+      function onUp() {
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+        row.classList.remove('dragging-live');
+        if (!moved) return;
+        row.style.transition = 'transform 260ms var(--ease-spring)';
+        var validDrop = dropLine.style.display === 'block' && dropLine.parentElement;
+        if (validDrop) {
+          var targetIndent = dropLine.parentElement;
+          var beforeRow = dropLine.nextElementSibling && dropLine.nextElementSibling.classList.contains('tree-row') ? dropLine.nextElementSibling : null;
+          dropLine.remove();
+          row.style.transform = 'translateY(0)';
+          applyMove(row, targetIndent, beforeRow);
+        } else {
+          row.style.transform = 'translateY(0)';
+        }
+        setTimeout(function () {
+          row.style.position = ''; row.style.zIndex = ''; row.style.background = ''; row.style.boxShadow = '';
+          dropLine.style.display = 'none';
+        }, 270);
+      }
+
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
+    });
+  }
+
+  /* Keyboard-accessible alternative to drag: a native <select> per leaf
+     row listing every rollup/sub-parent, focusable via Tab (opacity:0 does
+     not remove elements from the tab order - only :hover/:focus-within
+     reveal it visually, see the page-local CSS below). */
+  function wireKeyboardMove(row) {
+    if (row.querySelector('.actions')) return;
+    var meta = row.querySelector('.meta');
+    if (!meta) return;
+    var actions = el('div', { cls: 'actions' });
+    var label = el('label', { style: 'display:flex; align-items:center;' });
+    label.appendChild(el('span', { cls: 'sr-only', text: 'Move ' + rowLabel(row) + ' to a different rollup', style: 'position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0);' }));
+    var select = document.createElement('select');
+    select.className = 'icon-btn';
+    select.title = 'Move to...';
+    select.style.cssText = 'width:auto; font-size:11px; padding:3px 6px; border-radius:6px; border:1px solid var(--line); background:var(--surface); color:var(--ink-2); font-family:inherit;';
+    var placeholder = document.createElement('option');
+    placeholder.textContent = 'Move to…'; placeholder.value = ''; placeholder.disabled = true; placeholder.selected = true;
+    select.appendChild(placeholder);
+    containerRows().forEach(function (target) {
+      if (target === row) return;
+      var opt = document.createElement('option');
+      opt.value = String(containerRows().indexOf(target));
+      opt.textContent = rowLabel(target);
+      select.appendChild(opt);
+    });
+    select.addEventListener('click', function (e) { e.stopPropagation(); });
+    select.addEventListener('change', function () {
+      var idx = parseInt(select.value, 10);
+      var target = containerRows()[idx];
+      if (!target) return;
+      var targetIndent = indentOf(target);
+      applyMove(row, targetIndent, null);
+      Arkk.toast(ccLabel(row) + ' moved to ' + rowLabel(target) + ' | review in the MOVE panel.');
+      select.value = '';
+    });
+    label.appendChild(select);
+    actions.appendChild(label);
+    meta.appendChild(actions);
+  }
+
+  function wireFullDragReparent() {
+    var treeEl = document.querySelector('.tree');
+    if (!treeEl) return;
+
+    /* Strip arkk.js's original narrow pointerdown listeners off the 5
+       New-ops rows (clone+replace removes JS listeners, keeps markup) so
+       there is no double-wiring once every leaf is wired uniformly below. */
+    Array.prototype.forEach.call(treeEl.querySelectorAll('.indent .indent > .tree-row:not(.dragging)'), function (row) {
+      row.replaceWith(row.cloneNode(true));
+    });
+    var dropLine = treeEl.querySelector('.drop-line') || el('div', { cls: 'drop-line', attrs: { 'aria-hidden': 'true' } });
+    dropLine.remove();
+
+    Array.prototype.forEach.call(treeEl.querySelectorAll('.tree-row'), function (row) {
+      if (!isLeafRow(row)) return;
+      wireDrag(row, treeEl, dropLine);
+      wireKeyboardMove(row);
+    });
+
+    /* Cancel (in the now-reactive MOVE card) resets to the empty state
+       instead of just hiding the Unsaved tag - there is no longer always
+       a "pending" move to fall back to. */
+    var cancelBtn = Array.prototype.filter.call(document.querySelectorAll('.btn.soft'), function (b) { return b.textContent.trim() === 'Cancel'; })[0];
+    if (cancelBtn) cancelBtn.addEventListener('click', function () { window.__hierResetMoveCard(); });
+    var commitMoveBtn = Array.prototype.filter.call(document.querySelectorAll('.btn.primary'), function (b) { return /Commit move/.test(b.textContent); })[0];
+    if (commitMoveBtn) commitMoveBtn.addEventListener('click', function () { window.__hierResetMoveCard(); });
+  }
+
+  /* ---- "5 unmapped" chip + Unmapped strip stat: jump to the real
+     Unmapped section instead of being static text. ---- */
+  function wireUnmappedLinks() {
+    var targets = document.querySelectorAll('.hier-head .count, #move-goto-unmapped');
+    Array.prototype.forEach.call(targets, function (n) {
+      if (n.tagName === 'A' || /5 unmapped/.test(n.textContent)) {
+        if (n.tagName !== 'A') n.style.cursor = 'pointer';
+        n.addEventListener('click', function (e) {
+          e.preventDefault();
+          var section = document.getElementById('unmapped-section');
+          if (!section) return;
+          section.scrollIntoView({ block: 'center', behavior: 'smooth' });
+          section.style.transition = 'box-shadow .2s';
+          section.style.boxShadow = '0 0 0 2px var(--peach-ink)';
+          setTimeout(function () { section.style.boxShadow = ''; }, 900);
+        });
+      }
+    });
+    var unmappedStat = Array.prototype.filter.call(document.querySelectorAll('.score-card'), function (c) { return /Unmapped/.test(c.querySelector('.label') ? c.querySelector('.label').textContent : ''); })[0];
+    if (unmappedStat) {
+      unmappedStat.style.cursor = 'pointer';
+      unmappedStat.addEventListener('click', function () {
+        var section = document.getElementById('unmapped-section');
+        if (section) section.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      });
+    }
+  }
+
+  /* Replay committed moves into the live tree on load so a reparent
+     actually survives reload (not just a "N moves committed" count). Each
+     persisted move carries the CC code + destination rollup name; we find
+     the CC leaf row by its .label .id code and move it into the target
+     rollup's indent. Runs after buildLazyChildren so every synthetic row
+     already exists, and after wireFullDragReparent so moved rows keep their
+     drag/keyboard wiring. */
+  function replayPersistedMoves() {
+    var tree = document.querySelector('.tree');
+    if (!tree) return;
+    var moves = (hierStore.get().moves || []);
+    if (!moves.length) return;
+    var rows = Array.prototype.slice.call(tree.querySelectorAll('.tree-row'));
+    /* stored newest-first (unshift on commit) - replay oldest-first so a
+       chain of moves on the same CC lands in its final rollup. */
+    moves.slice().reverse().forEach(function (m) {
+      if (!m || !m.cc || !m.to) return;
+      var code = String(m.cc).trim().split(/\s+/)[0];
+      var ccRow = rows.filter(function (r) {
+        var idEl = r.querySelector('.label .id');
+        return idEl && idEl.textContent.trim() === code;
+      })[0];
+      if (!ccRow) return;
+      var targetRow = rows.filter(function (r) {
+        var n = r.nextElementSibling;
+        if (!n || !n.classList.contains('indent')) return false;
+        var nameEl = r.querySelector('.label .name');
+        return nameEl && nameEl.textContent.trim() === m.to;
+      })[0];
+      if (!targetRow) return;
+      var targetIndent = targetRow.nextElementSibling;
+      if (targetIndent && !targetIndent.contains(ccRow)) targetIndent.appendChild(ccRow);
+    });
+  }
+
+  function afterTreeReady() {
+    buildLazyChildren();
+    wireFullDragReparent();
+    wireUnmappedLinks();
+    replayPersistedMoves();
+  }
+  if (document.readyState === 'complete') afterTreeReady();
+  else window.addEventListener('load', afterTreeReady);
+
+  function headerBtn(label) {
+    return Array.prototype.filter.call(document.querySelectorAll('.page-meta .btn'), function (b) { return b.textContent.trim().indexOf(label) === 0; })[0];
+  }
+
+  /* ---- Commit move: real persistence + undo (layers on top of the
+     existing spring-pop-only listener already bound in arkk.js) ---- */
+  var commitMoveBtn = Array.prototype.filter.call(document.querySelectorAll('.btn.primary'), function (b) { return /Commit move/.test(b.textContent); })[0];
+  var moveSummaryCard = commitMoveBtn ? commitMoveBtn.closest('.card') : null;
+  if (commitMoveBtn) {
+    commitMoveBtn.addEventListener('click', function () {
+      var fromEl = document.querySelector('.move-summary .nest:not(.to) .nm');
+      var toEl = document.querySelector('.move-summary .nest.to .nm');
+      var ccEl = document.querySelector('.card p.muted .mono');
+      var move = { ts: Date.now(), cc: ccEl ? ccEl.textContent : 'cost centre', from: fromEl ? fromEl.textContent : '', to: toEl ? toEl.textContent : '' };
+      var s = hierStore.get();
+      s.moves.unshift(move);
+      hierStore.set(s, true);
+      Arkk.activity.log({ kind: 'data', title: 'Move committed | ' + move.cc + ' -> ' + move.to, href: 'hierarchy.html' });
+      Arkk.toast('Move committed | ' + move.cc + ' -> ' + move.to + '.');
+
+      var undoLine = moveSummaryCard.querySelector('.arkk-undo-line');
+      if (!undoLine) {
+        undoLine = el('div', { cls: 'arkk-undo-line', style: 'display:flex; align-items:center; justify-content:space-between; margin-top:10px; padding:8px 10px; background:var(--bg-2); border-radius:8px; font-size:12px; color:var(--ink-2);' });
+        moveSummaryCard.querySelector('div[style*="padding: 14px"]').appendChild(undoLine);
+      }
+      clear(undoLine);
+      undoLine.appendChild(el('span', { text: 'Move committed.' }));
+      var undoBtn = el('button', { cls: 'btn ghost', text: 'Undo last move', type: 'button', style: 'padding:3px 8px; font-size:11px;' });
+      undoLine.appendChild(undoBtn);
+      undoBtn.addEventListener('click', function () {
+        var st = hierStore.get();
+        st.moves.shift();
+        hierStore.set(st, true);
+        undoLine.remove();
+        Arkk.toast('Move undone.');
+        Arkk.activity.log({ kind: 'data', title: 'Undid last hierarchy move', href: 'hierarchy.html' });
+      });
+    });
+  }
+
+  /* Replay persisted moves so a reparent survives reload - render-only note
+     since the drag interaction itself is optimistic DOM (unchanged from the
+     existing build); this makes the persisted count visible and honest. */
+  (function renderMoveReplayNote() {
+    var moves = hierStore.get().moves;
+    if (!moves.length || !moveSummaryCard) return;
+    var note = el('div', { style: 'margin-top:10px; font-size:11.5px; color:var(--ink-3);' });
+    note.textContent = moves.length + ' move' + (moves.length === 1 ? '' : 's') + ' committed this session.';
+    var body = moveSummaryCard.querySelector('div[style*="padding: 14px"]');
+    if (body) body.appendChild(note);
+  })();
+
+  /* ---- Approve hierarchy: real persist + Reopen (reversible) ---- */
+  var approveBtn = headerBtn('Approve hierarchy');
+  function renderApproved() {
+    if (!approveBtn) return;
+    clear(approveBtn);
+    approveBtn.className = 'btn';
+    approveBtn.appendChild(icon('M5 12l4 4 10-10', { cls: 'ico-xs' }));
+    approveBtn.appendChild(document.createTextNode(' Hierarchy approved'));
+    var note = document.querySelector('.arkk-approved-note');
+    if (!note) {
+      note = el('div', { cls: 'arkk-approved-note status-pill done', style: 'margin-left:8px;' });
+      approveBtn.insertAdjacentElement('afterend', note);
+    }
+    clear(note);
+    note.appendChild(el('span', { cls: 'dot' }));
+    note.appendChild(document.createTextNode('Approved | reopen to edit'));
+  }
+  function renderReopened() {
+    if (!approveBtn) return;
+    clear(approveBtn);
+    approveBtn.className = 'btn primary';
+    approveBtn.appendChild(document.createTextNode('Approve hierarchy'));
+    var note = document.querySelector('.arkk-approved-note');
+    if (note) note.remove();
+  }
+  if (approveBtn) {
+    approveBtn.removeAttribute('data-commit');
+    approveBtn.addEventListener('click', function () {
+      var s = hierStore.get();
+      if (s.approved) return;
+      var pending = hierStore.get().moves.length === 0 && document.querySelector('.unsaved-indicator:not([hidden])');
+      if (pending) { Arkk.toast('Commit or cancel the pending move before approving.'); return; }
+      Arkk.commit(approveBtn);
+      s.approved = true;
+      hierStore.set(s, true);
+      renderApproved();
+      Arkk.activity.log({ kind: 'data', title: 'Hierarchy approved', href: 'hierarchy.html' });
+    });
+    if (hierStore.get().approved) renderApproved();
+  }
+  document.addEventListener('click', function (e) {
+    var note = e.target.closest('.arkk-approved-note');
+    if (!note) return;
+    var s = hierStore.get();
+    s.approved = false;
+    hierStore.set(s, true);
+    renderReopened();
+    Arkk.activity.log({ kind: 'data', title: 'Hierarchy reopened for edits', href: 'hierarchy.html' });
+  });
+
+  /* ---- Expand all / Collapse all ---- */
+  var expandBtn = headerBtn('Expand all');
+  if (expandBtn) {
+    var expanded = false;
+    expandBtn.addEventListener('click', function () {
+      expanded = !expanded;
+      document.querySelectorAll('.tree .twirl:not(.empty)').forEach(function (btn) {
+        var row = btn.closest('.tree-row');
+        var indent = row.nextElementSibling;
+        var isOpen = row.classList.contains('open');
+        if (expanded && !isOpen) btn.click();
+        if (!expanded && isOpen) btn.click();
+      });
+      setTrailingText(expandBtn, expanded ? 'Collapse all' : 'Expand all');
+    });
+  }
+
+  /* ---- New cost centre ---- */
+  var newCcBtn = headerBtn('New cost centre');
+  if (newCcBtn) {
+    newCcBtn.addEventListener('click', function () {
+      if (document.querySelector('.arkk-new-cc-form')) return;
+      var form = el('div', { cls: 'arkk-new-cc-form', style: 'display:flex; gap:8px; align-items:center; padding:10px 12px; margin:10px 0 16px; background:var(--bg-2); border-radius:10px; flex-wrap:wrap;' });
+      var codeInput = document.createElement('input');
+      codeInput.type = 'text'; codeInput.placeholder = 'Code (e.g. 5199)';
+      codeInput.style.cssText = 'width:110px; padding:7px 9px; font-size:12.5px; border:1px solid var(--line); border-radius:8px; font-family:inherit;';
+      var nameInput = document.createElement('input');
+      nameInput.type = 'text'; nameInput.placeholder = 'Name';
+      nameInput.style.cssText = 'flex:1; min-width:140px; padding:7px 9px; font-size:12.5px; border:1px solid var(--line); border-radius:8px; font-family:inherit;';
+      var parentSel = document.createElement('select');
+      parentSel.style.cssText = 'padding:7px 9px; font-size:12.5px; border:1px solid var(--line); border-radius:8px; font-family:inherit; background:var(--bg-3);';
+      D.rollups.forEach(function (r) { var o = document.createElement('option'); o.value = r; o.textContent = r; parentSel.appendChild(o); });
+      var create = el('button', { cls: 'btn primary', text: 'Create', type: 'button', style: 'padding:6px 12px; font-size:12px;' });
+      var cancel = el('button', { cls: 'btn soft', text: 'Cancel', type: 'button', style: 'padding:6px 12px; font-size:12px;' });
+      [codeInput, nameInput, parentSel, create, cancel].forEach(function (n) { form.appendChild(n); });
+      document.querySelector('.page-head').insertAdjacentElement('afterend', form);
+      cancel.addEventListener('click', function () { form.remove(); });
+      create.addEventListener('click', function () {
+        if (!codeInput.value.trim() || !nameInput.value.trim()) { (codeInput.value.trim() ? nameInput : codeInput).focus(); return; }
+        var cc = { code: codeInput.value.trim(), name: nameInput.value.trim(), parent: parentSel.value, ts: Date.now() };
+        var s = hierStore.get();
+        s.newCCs.push(cc);
+        hierStore.set(s, true);
+        appendLeafRow(cc);
+        Arkk.toast('Created cost centre ' + cc.code + ' under ' + cc.parent + '.');
+        Arkk.activity.log({ kind: 'data', title: 'Created cost centre ' + cc.code + ' | ' + cc.name, href: 'hierarchy.html' });
+        form.remove();
+      });
+    });
+  }
+
+  function appendLeafRow(cc) {
+    var groups = document.querySelectorAll('.tree-row.group .name');
+    var target = null;
+    groups.forEach(function (nameEl) {
+      if (nameEl.textContent.trim() === cc.parent || nameEl.textContent.indexOf(cc.parent) === 0) target = nameEl.closest('.tree-row');
+    });
+    var indent = target ? target.nextElementSibling : null;
+    if (!indent || !indent.classList.contains('indent')) return;
+    var row = el('div', { cls: 'tree-row' });
+    row.appendChild(el('span', { cls: 'twirl empty' }));
+    row.appendChild(el('span', { cls: 'twirl empty' }));
+    var label = el('div', { cls: 'label' });
+    label.appendChild(el('span', { cls: 'id mono', text: cc.code }));
+    label.appendChild(document.createTextNode(' '));
+    label.appendChild(el('span', { cls: 'name', text: cc.name }));
+    row.appendChild(label);
+    row.appendChild(el('div', { cls: 'meta' }));
+    indent.insertBefore(row, indent.firstChild);
+  }
+
+  /* replay any previously created cost centres so they survive reload */
+  hierStore.get().newCCs.forEach(appendLeafRow);
+
+  /* ---- Filter: hides non-matching tree rows by name/code ---- */
+  var filterInput = document.querySelector('.hier-search input');
+  var filterBtn = document.querySelector('.hier-head .btn.ghost');
+  if (filterBtn && filterInput) {
+    filterBtn.addEventListener('click', function () { filterInput.focus(); filterInput.select(); });
+  }
+  if (filterInput) {
+    filterInput.addEventListener('input', function () {
+      var q = filterInput.value.trim().toLowerCase();
+      document.querySelectorAll('.tree .tree-row').forEach(function (row) {
+        if (row.classList.contains('group')) { row.style.display = ''; return; }
+        var text = row.textContent.toLowerCase();
+        row.style.display = (!q || text.indexOf(q) !== -1) ? '' : 'none';
+      });
+    });
+  }
+
+  /* ---- Parent level view: collapse to top-level rollups only, reversible ---- */
+  var parentLevelLink = document.querySelector('a[data-quiet="Parent level view"]');
+  if (parentLevelLink) {
+    parentLevelLink.removeAttribute('data-quiet');
+    var atParentLevel = false;
+    parentLevelLink.addEventListener('click', function (e) {
+      e.preventDefault();
+      atParentLevel = !atParentLevel;
+      document.querySelectorAll('.tree-row.group').forEach(function (row) {
+        var indent = row.nextElementSibling;
+        if (indent && indent.classList.contains('indent')) indent.style.display = atParentLevel ? 'none' : '';
+        row.classList.toggle('open', !atParentLevel);
+      });
+      setTrailingText(parentLevelLink, atParentLevel ? 'Show full tree' : 'Show parent level');
+    });
+  }
+
+  /* ---- Hierarchy moves log ---- */
+  var movesLogLink = document.querySelector('a[data-quiet="Hierarchy moves log"]');
+  if (movesLogLink) {
+    movesLogLink.removeAttribute('data-quiet');
+    movesLogLink.addEventListener('click', function (e) {
+      e.preventDefault();
+      var overlay = Arkk.overlay({ mode: 'drawer', label: 'Hierarchy moves log' });
+      var wrap = overlay.body;
+      wrap.style.padding = '0';
+      var head = el('div', { style: 'padding:16px 18px; border-bottom:1px solid var(--line-2);' });
+      head.appendChild(el('div', { text: 'Hierarchy moves log', style: 'font-size:15px; font-weight:600; color:var(--ink);' }));
+      wrap.appendChild(head);
+      var body = el('div', { style: 'padding:12px 18px; overflow-y:auto;' });
+      var seeded = [
+        { cc: '5170', text: 'moved into New ops', time: '2m' },
+        { cc: '5180', text: 'created as new CC', time: '1h' },
+        { cc: '5151', text: 'renamed to "Business IT development"', time: '3h' },
+        { cc: '5159', text: 'moved from Central to New ops', time: 'Yest.' }
+      ];
+      var persisted = hierStore.get().moves.map(function (m) { return { cc: m.cc, text: 'moved from ' + m.from + ' to ' + m.to, time: 'now' }; });
+      persisted.concat(seeded).forEach(function (m) {
+        var row = el('div', { style: 'display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--line-2); font-size:12.5px; color:var(--ink-2);' });
+        row.appendChild(el('b', { text: m.cc, style: 'font-family:\'Geist Mono\', monospace; color:var(--ink);' }));
+        row.appendChild(el('span', { text: m.text, style: 'flex:1;' }));
+        row.appendChild(el('span', { text: m.time, style: 'color:var(--ink-4);' }));
+        body.appendChild(row);
+      });
+      wrap.appendChild(body);
+    });
+  }
+});
+</script>
+
+</body>
+</html>

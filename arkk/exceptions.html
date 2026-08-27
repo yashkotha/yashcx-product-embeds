@@ -1,0 +1,824 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<script>try{if(localStorage.getItem('arkk.nav.collapsed')==='1')document.documentElement.dataset.navCollapsed='1';}catch(e){}</script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Triage exceptions | Arkk Transfer Pricing</title>
+<link rel="stylesheet" href="shared.css" />
+<style>
+  /* Chrome reconciliation: left sidebar is the ONE navigation; the topbar
+     segmented tab strip duplicated it and is removed. Collapse the topbar
+     grid from 3 tracks (nav | search | actions) to 2 (search | actions)
+     without touching shared.css (LAW, never edited). */
+  .topbar { grid-template-columns: 1fr auto !important; }
+</style>
+<link rel="stylesheet" href="arkk-nav.css" />
+<script defer src="arkk-data.js"></script>
+<script defer src="arkk.js"></script>
+<script defer src="arkk-nav.js"></script>
+<script defer src="arkk-chrome.js"></script>
+<style>
+  /* --- Carried over from matrix-edit.html (not in shared.css) --- */
+  .split { display: grid; grid-template-columns: 1.6fr 1fr; gap: 18px; align-items: start; }
+  .edit-card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md);
+    padding: 0;
+  }
+  .edit-head {
+    padding: 18px 22px 16px;
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, var(--bg-3), var(--surface));
+  }
+  .edit-head .label {
+    font-family: "Geist Mono", monospace; font-size: 10px;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3);
+  }
+  .edit-head h2 {
+    font-size: 22px; font-weight: 500; margin: 6px 0 0;
+    letter-spacing: -0.02em;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .edit-head h2 .arrow { color: var(--ink-4); font-weight: 400; font-size: 16px; }
+  .edit-body { padding: 22px; }
+  .rule-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .rule-option {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    cursor: pointer;
+    text-align: left;
+    transition: border-color .15s, background .15s, transform var(--dur-ui) var(--ease-house);
+    position: relative;
+  }
+  .rule-option:hover { background: var(--bg-3); border-color: oklch(82% 0.04 254); transform: translateY(-1px); }
+  .rule-option .desc { color: var(--ink-3); font-size: 12px; }
+  .rule-option.selected {
+    border-color: var(--brand);
+    background: var(--brand-soft);
+    box-shadow: 0 0 0 4px oklch(54% 0.19 254 / 0.10);
+  }
+  .rule-option.selected::after {
+    content: ""; position: absolute; top: 12px; right: 12px;
+    width: 18px; height: 18px; border-radius: 5px;
+    background-color: var(--brand);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><path d='M5 12l4 4 10-10'/></svg>");
+    background-size: 12px;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
+  /* --- Page-local: queue + drawer --- */
+  .strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 18px; }
+  .queue-list { display: flex; flex-direction: column; }
+  .queue-row {
+    display: grid;
+    grid-template-columns: 28px 1fr auto auto;
+    gap: 12px; align-items: center;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--line-2);
+    cursor: pointer;
+    transition: background var(--dur-micro) var(--ease-house);
+  }
+  .queue-row:last-child { border-bottom: 0; }
+  .queue-row:hover { background: var(--bg-3); }
+  .queue-row.selected { background: var(--brand-soft); }
+  .queue-row.selected .qr-title { font-weight: 600; }
+  .queue-row.snoozed { opacity: 0.6; }
+  .qr-body { min-width: 0; }
+  .qr-title { font-size: 13px; color: var(--ink); font-weight: 500; }
+  .qr-title .mono { color: var(--ink-3); font-weight: 400; margin-right: 6px; }
+  .qr-meta { font-size: 12px; color: var(--ink-3); margin-top: 2px; }
+  .empty-panel {
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+    gap: 10px; padding: 56px 24px;
+  }
+  .empty-panel p { margin: 0; color: var(--ink-3); font-size: 13px; max-width: 40ch; }
+  .drawer-empty {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 8px; padding: 64px 24px; color: var(--ink-3); font-size: 13px; text-align: center;
+  }
+  .fixline {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 10px 12px; margin-bottom: 10px;
+    background: var(--bg-2); border-radius: 8px;
+    font-size: 12px; color: var(--ink-2); line-height: 1.5;
+  }
+  .save-error {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; margin-top: 14px;
+    background: var(--bg-2); border-radius: 8px;
+    font-size: 12px; color: var(--ink-2);
+  }
+
+  /* Page-local secondary-action treatment: paired secondary actions
+     (Cancel / Back / Reset) must read as buttons, not bare text.
+     Neutral low-alpha ink fill, standard hairline, same geometry as the
+     adjacent primary. Hover deepens the fill. */
+  .btn.soft {
+    background: oklch(18% 0.014 254 / 0.05);
+    border-color: var(--line);
+    color: var(--ink-2);
+    box-shadow: none;
+  }
+  .btn.soft:hover {
+    background: oklch(18% 0.014 254 / 0.09);
+    border-color: oklch(87% 0.012 254);
+    color: var(--ink);
+  }
+  .btn.soft:focus-visible {
+    outline: 2px solid oklch(54% 0.19 254 / 0.3);
+    outline-offset: 1px;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Primary (dashboard) navigation -->
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <div class="logo">fs</div>
+      <button class="ws-switch">
+        Northgate
+        <svg class="ico-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l5 5 5-5"/></svg>
+      </button>
+    </div>
+    <div class="sidebar-section">
+      <a class="nav-item" href="./">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 9.5V21h5v-7h4v7h5V9.5"/></svg>
+        <span class="nav-label">Dashboard</span>
+      </a>
+      <a class="nav-item" href="#" data-focus-search>
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <span class="nav-label">Search</span>
+        <span class="count">⌘K</span>
+      </a>
+      <a class="nav-item" href="#" data-quiet="Inbox">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l3-9h12l3 9v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1zM3 13h6l1 3h4l1-3h6"/></svg>
+        <span class="nav-label">Inbox</span>
+        <span class="count">3</span>
+      </a>
+    </div>
+    <div class="sidebar-section">
+      <div class="heading">Workspace</div>
+      <a class="nav-item active" href="./">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 9.5V21h5v-7h4v7h5V9.5"/></svg>
+        <span class="nav-label">Overview</span>
+      </a>
+      <a class="nav-item" href="matrix.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h6v6H4zM14 6h6v6h-6zM4 16h6v4H4zM14 16h6v4h-6z"/></svg>
+        <span class="nav-label">Cost matrix</span>
+      </a>
+      <a class="nav-item" href="transfer-pricing.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h14M14 5l3 3-3 3M21 16H7M10 19l-3-3 3-3"/></svg>
+        <span class="nav-label">Benchmarking</span>
+      </a>
+      <a class="nav-item" href="hierarchy.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="6" rx="1.3"/><rect x="3" y="15" width="6" height="6" rx="1.3"/><rect x="15" y="15" width="6" height="6" rx="1.3"/><path d="M12 9v3M6 15v-3h12v3"/></svg>
+        <span class="nav-label">Hierarchy</span>
+      </a>
+      <a class="nav-item" href="runs.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M10.2 8.7l5.4 3.3-5.4 3.3z"/></svg>
+        <span class="nav-label">Runs</span>
+      </a>
+      <a class="nav-item" href="workflows.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h6m0 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM5 17h6m0 0a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM5 7v10"/></svg>
+        <span class="nav-label">Workflows</span>
+      </a>
+    </div>
+    <div class="sidebar-section">
+      <div class="heading">Data &amp; admin</div>
+      <a class="nav-item" href="data-sources.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>
+        <span class="nav-label">Data sources</span>
+      </a>
+      <a class="nav-item" href="reports.html">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>
+        <span class="nav-label">Reports</span>
+      </a>
+      <a class="nav-item" href="#" data-quiet="Settings">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .4 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.4 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .4-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.4-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.4H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.4l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.4 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        <span class="nav-label">Settings</span>
+      </a>
+    </div>
+    <div class="sidebar-foot">
+      <div class="user-chip">TH</div>
+      <div>
+        <div class="nm">Tom Heffes</div>
+        <div class="rl">Tax Lead | Northgate</div>
+      </div>
+      <a class="more" href="#" data-quiet="Account menu" title="Account menu">
+        <svg class="ico-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Icon rail (legacy, hidden) -->
+  <aside class="rail" aria-label="Workspace">
+    <div class="logo">fs</div>
+    <nav class="nav">
+      <a href="./" class="item active" title="Overview"><svg class="ico" viewBox="0 0 24 24"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg></a>
+      <a href="matrix.html" class="item" title="Cost matrix"><svg class="ico" viewBox="0 0 24 24"><path d="M4 6h6v6H4zM14 6h6v6h-6zM4 16h6v4H4zM14 16h6v4h-6z"/></svg></a>
+      <a href="hierarchy.html" class="item" title="Hierarchy"><svg class="ico" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="6" rx="1.3"/><rect x="3" y="15" width="6" height="6" rx="1.3"/><rect x="15" y="15" width="6" height="6" rx="1.3"/><path d="M12 9v3M6 15v-3h12v3"/></svg></a>
+      <a href="runs.html" class="item" title="Runs"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M10.2 8.7l5.4 3.3-5.4 3.3z"/></svg></a>
+      <a href="workflows.html" class="item" title="Workflows"><svg class="ico" viewBox="0 0 24 24"><path d="M5 7h6m0 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM5 17h6m0 0a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM5 7v10"/></svg></a>
+    </nav>
+    <div class="spacer"></div>
+    <a href="#" class="item" style="width: 40px; height: 40px;" title="Help" data-quiet="Help"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.4v.3M12 17h.01"/></svg></a>
+    <a href="#" class="item" style="width: 40px; height: 40px;" title="Settings" data-quiet="Settings"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .4 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.4 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .4-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.4-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.4H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.4l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.4 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></a>
+    <div class="me" title="Tom Heffes">TH</div>
+  </aside>
+
+  <main class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="brand-block">
+        <div class="logo">fs</div>
+        <button class="ws-switch">Northgate <svg class="ico-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l5 5 5-5"/></svg></button>
+      </div>
+      <div class="search">
+        <svg class="ico-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input placeholder="Find an exception, cost centre or entity…" />
+        <span class="kbd">⌘K</span>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn" title="History"><svg class="ico" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5M12 7v6l4 2"/></svg></button>
+        <button class="icon-btn" title="Notifications"><svg class="ico" viewBox="0 0 24 24"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 7 3 9H3c0-2 3-2 3-9zM10 21a2 2 0 0 0 4 0"/></svg></button>
+        <div class="user-chip" title="Tom Heffes">TH</div>
+      </div>
+    </div>
+
+    <div class="page">
+
+      <nav class="crumbs">
+        <a href="./">Transfer Pricing</a>
+        <span class="sep">/</span>
+        <a href="./">Q4 2024</a>
+        <span class="sep">/</span>
+        <span class="here">Exceptions</span>
+      </nav>
+
+      <!-- Header -->
+      <div class="page-head" data-reveal>
+        <div>
+          <div class="page-eyebrow">
+            <span>7 open | 3 new since last close | 2 assigned to you</span>
+          </div>
+          <h1 class="page-title">Triage <em>exceptions.</em></h1>
+          <p class="page-sub">Cost centres and transactions Arkk could not map automatically. Assign each to a group or resolve with a rule. Resolved items flow straight back into the cost matrix.</p>
+        </div>
+        <div class="page-meta">
+          <span class="status-pill in-progress">7 to triage</span>
+          <button class="btn">Assign all to me</button>
+          <button class="btn">Filter</button>
+          <button class="btn primary" id="auto-suggest-btn"><svg class="ico" viewBox="0 0 24 24"><path d="M12 2l2 6h6l-5 4 2 7-7-4-7 4 2-7-5-4h6z"/></svg> Auto-suggest mappings</button>
+        </div>
+      </div>
+
+      <!-- Stat strip -->
+      <div class="strip" data-reveal>
+        <div class="score-card" style="border-color: var(--brand-line); background: linear-gradient(180deg, var(--brand-soft), var(--surface));">
+          <div class="label" style="color: var(--brand-2);">Open</div>
+          <div class="v" id="stat-open" style="color: var(--brand-2);" data-count="7"></div>
+          <div class="sub" style="color: var(--brand-2);">across 3 entity groups</div>
+        </div>
+        <div class="score-card">
+          <div class="label">New</div>
+          <div class="v" data-count="3"></div>
+          <div class="sub">since 21 Feb</div>
+        </div>
+        <div class="score-card">
+          <div class="label">Assigned</div>
+          <div class="v" id="stat-assigned" data-count="2"></div>
+          <div class="sub">you own 2</div>
+        </div>
+        <div class="score-card">
+          <div class="label">Resolved today</div>
+          <div class="v" id="stat-resolved" data-count="4"></div>
+          <div class="sub">auto + manual</div>
+        </div>
+      </div>
+
+      <!-- Body: queue + drawer -->
+      <div class="split" data-reveal>
+        <div class="card flush" id="queue-card">
+          <div class="card-head">
+            <div class="card-title"><span class="num-badge">QUEUE</span> Unresolved exceptions</div>
+            <div class="seg">
+              <button class="on">All</button>
+              <button>Cost centres</button>
+              <button>Transactions</button>
+            </div>
+          </div>
+          <div class="queue-list" id="queue-list"></div>
+        </div>
+
+        <div class="edit-card" id="drawer" style="position: sticky; top: 110px;"></div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  'use strict';
+  if (!window.Arkk || !window.ArkkData) return;
+  var Arkk = window.Arkk, D = window.ArkkData;
+  var el = Arkk.el, icon = Arkk.icon, clear = Arkk.clear;
+
+  /* WAVE 1 - the one shared seed source (ArkkData.exceptions) is the source
+     of truth. Clone it into a local working array (the seed is frozen) so
+     per-session mutation (selected option, status, audit trail...) never
+     touches the shared object, then overlay persisted triage state. */
+  var EXCEPTIONS = JSON.parse(JSON.stringify(D.exceptions));
+
+  /* Additive loader: pulls in exceptions created elsewhere (e.g. the
+     transfer-pricing.html flag-and-create flow) before the queue renders. */
+  try {
+    var pend = JSON.parse(localStorage.getItem('arkk_pending_exceptions') || '[]');
+    pend.forEach(function (x) { if (!EXCEPTIONS.some(function (e) { return e.id === x.id; })) EXCEPTIONS.unshift(x); });
+  } catch (e) { /* no-op - queue renders normally, never a dead end */ }
+
+  /* WAVE 1 - persistence: arkk.exceptions.v1.byId[id] = {status, assignee,
+     snoozeUntil, resolved, note, audit}. Defensive default, applied on top
+     of the seed/pending merge above so a reload preserves the queue
+     exactly. Every mutation below calls persist(item) immediately after. */
+  var triageStore = Arkk.store('arkk.exceptions.v1', function () { return { byId: {} }; });
+  (function applyPersisted() {
+    var saved = triageStore.get().byId || {};
+    EXCEPTIONS.forEach(function (item) {
+      var rec = saved[item.id];
+      if (!rec) return;
+      if (rec.status) item.status = rec.status;
+      if (rec.assignee) item.assignee = rec.assignee;
+      if (rec.snoozeUntil) item.snoozeUntil = rec.snoozeUntil;
+      if (rec.resolved) item.resolved = true;
+      if (rec.note) item.note = rec.note;
+      if (rec.audit) item.audit = rec.audit;
+      if (rec.selectedPill) {
+        item.options.forEach(function (o) { o.selected = (o.pill === rec.selectedPill); });
+      }
+      /* auto-return: a snoozed item whose date has passed comes back active */
+      if (item.snoozeUntil && item.snoozeUntil <= Date.now()) { item.snoozeUntil = null; item.snoozed = false; }
+      else if (item.snoozeUntil) { item.snoozed = true; }
+    });
+  })();
+
+  function persist(item) {
+    var s = triageStore.get();
+    if (!s.byId) s.byId = {};
+    var selected = item.options.filter(function (o) { return o.selected; })[0];
+    s.byId[item.id] = {
+      status: item.status, assignee: item.assignee || null, snoozeUntil: item.snoozeUntil || null,
+      resolved: !!item.resolved, note: item.note || '', audit: item.audit || [],
+      selectedPill: selected ? selected.pill : null
+    };
+    triageStore.set(s, true);
+  }
+
+  function addAudit(item, action) {
+    if (!item.audit) item.audit = [];
+    item.audit.unshift({ ts: Date.now(), actor: D.user.name, action: action });
+  }
+
+  var currentId = EXCEPTIONS[0].id;
+  var queueListEl = document.getElementById('queue-list');
+  var queueCardEl = document.getElementById('queue-card');
+  var drawerEl = document.getElementById('drawer');
+  var statOpen = document.getElementById('stat-open');
+  var statAssigned = document.getElementById('stat-assigned');
+  var statResolved = document.getElementById('stat-resolved');
+
+  function bumpStat(node, delta) {
+    var current = (typeof node._statVal === 'number')
+      ? node._statVal
+      : parseFloat((node.firstChild && node.firstChild.nodeValue) || node.getAttribute('data-count') || '0');
+    var target = current + delta;
+    node._statVal = target;
+    Arkk.countUp(node, { to: target, from: current, duration: 400 });
+  }
+
+  var kindFilter = 'all';   /* all | cc | txn - driven by the queue-card seg */
+  var statusFilter = 'all'; /* all | new | assigned | snoozed - driven by the Filter menu */
+
+  function activeItems() {
+    var items = EXCEPTIONS.filter(function (x) { return !x.resolved; });
+    /* snoozed items sink to the bottom of the queue, original order otherwise preserved */
+    items.sort(function (a, b) { return (a.snoozed ? 1 : 0) - (b.snoozed ? 1 : 0); });
+    return items;
+  }
+
+  function visibleItems() {
+    return activeItems().filter(function (item) {
+      if (kindFilter !== 'all' && item.kind !== kindFilter) return false;
+      if (statusFilter === 'new' && item.status !== 'New') return false;
+      if (statusFilter === 'assigned' && item.status !== 'Assigned') return false;
+      if (statusFilter === 'snoozed' && !item.snoozed) return false;
+      return true;
+    });
+  }
+
+  function findItem(id) {
+    for (var i = 0; i < EXCEPTIONS.length; i++) if (EXCEPTIONS[i].id === id) return EXCEPTIONS[i];
+    return null;
+  }
+
+  function renderQueue() {
+    clear(queueListEl);
+    var all = activeItems();
+    if (!all.length) {
+      renderQueueEmpty();
+      return;
+    }
+    var items = visibleItems();
+    if (!items.length) {
+      var noMatch = el('div', { cls: 'empty-panel' });
+      noMatch.appendChild(el('div', { text: 'No exceptions match this filter', style: 'font-size:13px; color:var(--ink);' }));
+      noMatch.appendChild(el('p', { text: 'Try a different filter or clear it to see the full queue.' }));
+      queueListEl.appendChild(noMatch);
+      return;
+    }
+    items.forEach(function (item) {
+      var row = el('div', { cls: 'queue-row' + (item.id === currentId ? ' selected' : '') + (item.snoozed ? ' snoozed' : '') });
+      row.setAttribute('data-exit', '');
+      row.dataset.id = item.id;
+
+      var av = el('span', { cls: 'ent-av', text: item.code.slice(0, 2), style: 'width:28px; height:28px; border-radius:8px;' });
+      var body = el('div', { cls: 'qr-body' });
+      var title = el('div', { cls: 'qr-title' });
+      var monoCode = el('span', { cls: 'mono', text: item.code });
+      title.appendChild(monoCode);
+      title.appendChild(document.createTextNode(item.title));
+      var metaText = item.snoozed ? 'Snoozed until ' + new Date(item.snoozeUntil).toLocaleDateString() : item.meta;
+      var meta = el('div', { cls: 'qr-meta', text: metaText });
+      body.appendChild(title); body.appendChild(meta);
+
+      var tag = el('span', { cls: 'tag ' + (item.tag === 'UNMAPPED' ? 'brand' : 'mint'), text: item.tag });
+      var pill = el('span', { cls: 'status-pill ' + (item.status === 'Assigned' ? 'done' : 'in-progress'), text: item.snoozed ? 'Snoozed' : item.status });
+
+      row.appendChild(av); row.appendChild(body); row.appendChild(tag); row.appendChild(pill);
+      row.addEventListener('click', function () { select(item.id); });
+      queueListEl.appendChild(row);
+    });
+  }
+
+  function renderQueueEmpty() {
+    clear(queueListEl);
+    var wrap = el('div', { cls: 'empty-panel' });
+    var check = el('span', { cls: 'tl-ico mint', style: 'width:40px; height:40px;' });
+    check.appendChild(icon('M5 12l4 4 10-10', { strokeWidth: '2.4' }));
+    var title = el('div', { text: 'All exceptions cleared', style: 'font-size:14px; font-weight:500; color:var(--ink);' });
+    var sub = el('p', { text: 'Every cost centre in Q4 2024 now maps to a rollup. Resolved items are live in the cost matrix.' });
+    var back = el('a', { cls: 'btn', text: 'Back to overview' });
+    back.href = './';
+    wrap.appendChild(check); wrap.appendChild(title); wrap.appendChild(sub); wrap.appendChild(back);
+    queueListEl.appendChild(wrap);
+    renderDrawerEmpty();
+  }
+
+  function renderDrawerEmpty() {
+    clear(drawerEl);
+    var wrap = el('div', { cls: 'drawer-empty' });
+    wrap.appendChild(el('div', { text: 'Nothing selected' }));
+    wrap.appendChild(el('div', { text: 'Choose an item from the queue to see its detail here.', style: 'font-size:12px;' }));
+    drawerEl.appendChild(wrap);
+  }
+
+  function buildField(labelText, child) {
+    var f = el('div', { cls: 'field' });
+    f.appendChild(el('label', { text: labelText }));
+    f.appendChild(child);
+    return f;
+  }
+
+  function renderDrawer(id) {
+    var item = findItem(id);
+    if (!item) { renderDrawerEmpty(); return; }
+
+    drawerEl.setAttribute('data-crossfade', '');
+    drawerEl.classList.add('fade-out');
+
+    setTimeout(function () {
+      clear(drawerEl);
+
+      var head = el('div', { cls: 'edit-head' });
+      head.appendChild(el('div', { cls: 'label', text: 'SELECTED EXCEPTION' }));
+      var h2 = el('h2');
+      h2.appendChild(document.createTextNode(item.code));
+      var arrow = el('span', { cls: 'arrow', text: '→' });
+      h2.appendChild(arrow);
+      h2.appendChild(document.createTextNode('needs a rollup'));
+      head.appendChild(h2);
+      drawerEl.appendChild(head);
+
+      var body = el('div', { cls: 'edit-body' });
+
+      var foundRow = el('div', { cls: 'row-key', text: item.found });
+      body.appendChild(buildField('What Arkk found', foundRow));
+
+      var scopeRow = el('div', { cls: 'row-key', text: item.scope });
+      body.appendChild(buildField('Entity / scope', scopeRow));
+
+      var fixField = el('div', { cls: 'field' });
+      fixField.appendChild(el('label', { text: 'Suggested fix' }));
+      if (item.noConfidentMatch) {
+        var fline = el('div', { cls: 'fixline' });
+        fline.appendChild(document.createTextNode('Arkk could not find a confident match for ' + item.code + ' - the code is new and has no history.'));
+        fixField.appendChild(fline);
+      }
+      var grid = el('div', { cls: 'rule-grid' });
+      item.options.forEach(function (opt, i) {
+        var btn = el('button', { cls: 'rule-option' + (opt.selected ? ' selected' : ''), type: 'button' });
+        var pillEl = el('span', { cls: 'pill ' + opt.pill, text: opt.label });
+        var descEl = el('span', { cls: 'desc', text: opt.desc });
+        btn.appendChild(pillEl); btn.appendChild(descEl);
+        btn.addEventListener('click', function () {
+          grid.querySelectorAll('.rule-option').forEach(function (o) { o.classList.remove('selected'); });
+          item.options.forEach(function (o) { o.selected = false; });
+          btn.classList.add('selected');
+          opt.selected = true;
+        });
+        grid.appendChild(btn);
+      });
+      fixField.appendChild(grid);
+      body.appendChild(fixField);
+
+      var ASSIGNEES = ['John Doe', 'Tom Heffes', 'Maria R.'];
+      var selectWrap = document.createElement('select');
+      selectWrap.className = 'select';
+      ASSIGNEES.forEach(function (name) {
+        var o = document.createElement('option');
+        o.value = name; o.textContent = name;
+        if ((item.assignee || 'John Doe') === name) o.selected = true;
+        selectWrap.appendChild(o);
+      });
+      body.appendChild(buildField('Assignee', selectWrap));
+
+      var textarea = document.createElement('textarea');
+      textarea.placeholder = 'Add a note for the audit trail…';
+      textarea.value = item.note || '';
+      body.appendChild(buildField('Note', textarea));
+
+      if (item.snoozed) {
+        var snoozedNote = el('div', { cls: 'row-key', style: 'margin-top:6px;' });
+        snoozedNote.appendChild(document.createTextNode('Snoozed until ' + new Date(item.snoozeUntil).toLocaleDateString() + '.'));
+        body.appendChild(buildField('Snooze', snoozedNote));
+      }
+
+      /* Audit trail - grows with every assign/snooze/resolve/auto-suggest action */
+      var auditField = el('div', { cls: 'field' });
+      auditField.appendChild(el('label', { text: 'Audit trail' }));
+      var auditList = el('div', { cls: 'audit-list', style: 'display:flex; flex-direction:column; gap:6px;' });
+      var auditEntries = item.audit || [];
+      if (!auditEntries.length) {
+        auditList.appendChild(el('div', { cls: 'row-key', text: 'No activity yet on this exception.' }));
+      } else {
+        auditEntries.slice(0, 6).forEach(function (a) {
+          var row = el('div', { style: 'display:flex; justify-content:space-between; gap:10px; font-size:12px; color:var(--ink-2);' });
+          row.appendChild(el('span', { text: a.actor + ' ' + a.action }));
+          row.appendChild(el('span', { text: new Date(a.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), style: 'color:var(--ink-4); flex:0 0 auto;' }));
+          auditList.appendChild(row);
+        });
+      }
+      auditField.appendChild(auditList);
+      body.appendChild(auditField);
+
+      var actions = el('div', { style: 'display:flex; gap:8px; margin-top:22px; position:relative;' });
+      var snoozeBtn = el('button', { cls: 'btn soft', text: item.snoozed ? 'Unsnooze' : 'Snooze', type: 'button' });
+      var assignBtn = el('button', { cls: 'btn', text: 'Assign', type: 'button' });
+      var resolveBtn = el('button', { cls: 'btn primary', text: 'Resolve exception', type: 'button' });
+      actions.appendChild(snoozeBtn); actions.appendChild(assignBtn); actions.appendChild(resolveBtn);
+      body.appendChild(actions);
+
+      drawerEl.appendChild(body);
+      drawerEl.classList.remove('fade-out');
+
+      snoozeBtn.addEventListener('click', function () {
+        if (item.snoozed) { unsnooze(item.id); return; }
+        if (actions.querySelector('.arkk-snooze-menu')) return;
+        var menu = el('div', { cls: 'arkk-snooze-menu', style: 'position:absolute; bottom:100%; left:0; margin-bottom:6px; background:oklch(100% 0 0 / 0.96); border:1px solid var(--line); border-radius:10px; box-shadow:var(--shadow-pop); padding:6px; min-width:160px; z-index:20;' });
+        [['Tomorrow', 1], ['Next week', 7], ['Next close', 30]].forEach(function (opt) {
+          var b = el('button', { type: 'button', text: 'Snooze until ' + opt[0].toLowerCase(), style: 'display:block; width:100%; text-align:left; padding:7px 9px; border-radius:8px; border:0; background:transparent; font-size:12.5px; color:var(--ink); cursor:pointer; font-family:inherit;' });
+          b.addEventListener('click', function () {
+            snooze(item.id, Date.now() + opt[1] * 24 * 60 * 60 * 1000, opt[0]);
+            menu.remove();
+          });
+          menu.appendChild(b);
+        });
+        actions.appendChild(menu);
+      });
+      assignBtn.addEventListener('click', function () { assign(item.id, selectWrap.value); });
+      resolveBtn.addEventListener('click', function () { item.note = textarea.value; resolve(item.id, resolveBtn); });
+    }, Arkk.reduce ? 0 : 160);
+  }
+
+  function select(id) {
+    currentId = id;
+    queueListEl.querySelectorAll('.queue-row').forEach(function (r) {
+      r.classList.toggle('selected', r.dataset.id === id);
+    });
+    renderDrawer(id);
+  }
+
+  function assign(id, assignee) {
+    var item = findItem(id);
+    if (!item) return;
+    var wasAssigned = item.status === 'Assigned';
+    item.assignee = assignee || 'John Doe';
+    if (!wasAssigned) {
+      item.status = 'Assigned';
+      bumpStat(statAssigned, 1);
+    }
+    addAudit(item, 'assigned to ' + item.assignee);
+    persist(item);
+    renderQueue();
+    if (item.id === currentId) renderDrawer(item.id);
+  }
+
+  function assignAllToMe() {
+    var count = 0;
+    activeItems().forEach(function (item) {
+      if (item.assignee === D.user.name && item.status === 'Assigned') return;
+      var wasAssigned = item.status === 'Assigned';
+      item.assignee = D.user.name;
+      item.status = 'Assigned';
+      if (!wasAssigned) bumpStat(statAssigned, 1);
+      addAudit(item, 'assigned to ' + D.user.name);
+      persist(item);
+      count++;
+    });
+    renderQueue();
+    if (currentId) renderDrawer(currentId);
+    Arkk.toast('Assigned ' + count + ' exceptions to you.');
+  }
+
+  function snooze(id, until, label) {
+    var item = findItem(id);
+    if (!item) return;
+    item.snoozed = true;
+    item.snoozeUntil = until || (Date.now() + 24 * 60 * 60 * 1000);
+    addAudit(item, 'snoozed until ' + (label || new Date(item.snoozeUntil).toLocaleDateString()).toLowerCase());
+    persist(item);
+    renderQueue();
+    var items = activeItems();
+    if (items.length) select(items[0].id);
+  }
+
+  function unsnooze(id) {
+    var item = findItem(id);
+    if (!item) return;
+    item.snoozed = false;
+    item.snoozeUntil = null;
+    addAudit(item, 'unsnoozed');
+    persist(item);
+    renderQueue();
+    select(id);
+  }
+
+  function resolve(id, btn) {
+    var item = findItem(id);
+    if (!item) return;
+    if (item.resolved) return;
+
+    if (item.simulateOfflineError && !item.retried) {
+      Arkk.commit(btn);
+      var body = drawerEl.querySelector('.edit-body');
+      if (body && !body.querySelector('.save-error')) {
+        var errWrap = el('div', { cls: 'save-error' });
+        errWrap.appendChild(document.createTextNode('This did not save. Your assignment is kept locally - retry when you are back online.'));
+        var retryBtn = el('button', { cls: 'btn ghost', text: 'Retry', type: 'button', style: 'padding:3px 8px; font-size:11px; margin-left:auto;' });
+        errWrap.appendChild(retryBtn);
+        body.appendChild(errWrap);
+        retryBtn.addEventListener('click', function () {
+          item.retried = true;
+          errWrap.remove();
+          resolve(id, btn);
+        });
+      }
+      return;
+    }
+
+    Arkk.commit(btn);
+    var row = queueListEl.querySelector('.queue-row[data-id="' + id + '"]');
+    var items = activeItems();
+    var idx = items.findIndex(function (x) { return x.id === id; });
+    item.resolved = true;
+    var chosen = item.options.filter(function (o) { return o.selected; })[0];
+    addAudit(item, 'resolved with rule "' + (chosen ? chosen.label : 'default') + '"');
+    persist(item);
+
+    function afterExit() {
+      bumpStat(statOpen, -1);
+      bumpStat(statResolved, 1);
+      renderQueue();
+      var remaining = activeItems();
+      if (remaining.length) {
+        var safeIdx = Math.max(0, Math.min(idx, remaining.length - 1));
+        var next = remaining[safeIdx];
+        select(next.id);
+      } else {
+        renderQueueEmpty();
+        if (window.Arkk && Arkk.flow) Arkk.flow.set({ exceptionsCleared: true });
+      }
+    }
+
+    if (row && !Arkk.reduce) {
+      row.classList.add('leaving');
+      setTimeout(afterExit, 260);
+    } else {
+      afterExit();
+    }
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+    var items = visibleItems();
+    if (!items.length) return;
+    var idx = items.findIndex(function (x) { return x.id === currentId; });
+    if (idx === -1) idx = 0;
+    idx = e.key === 'ArrowDown' ? Math.min(idx + 1, items.length - 1) : Math.max(idx - 1, 0);
+    select(items[idx].id);
+    e.preventDefault();
+  });
+
+  /* ---- Auto-suggest mappings (real): re-applies each item's best-match
+     seed option across the whole unresolved queue, in-memory + auditable,
+     and fully reversible (the user can still pick another option). ---- */
+  var SEED_BY_ID = {};
+  D.exceptions.forEach(function (s) { SEED_BY_ID[s.id] = s; });
+  document.getElementById('auto-suggest-btn').addEventListener('click', function (e) {
+    Arkk.commit(e.currentTarget);
+    var suggested = 0;
+    activeItems().forEach(function (item) {
+      var seed = SEED_BY_ID[item.id];
+      if (!seed || item.noConfidentMatch) return;
+      var best = seed.options.filter(function (o) { return o.selected; })[0];
+      if (!best) return;
+      item.options.forEach(function (o) { o.selected = (o.pill === best.pill); });
+      addAudit(item, 'auto-suggested "' + best.label + '"');
+      persist(item);
+      suggested++;
+    });
+    if (currentId) renderDrawer(currentId);
+    Arkk.toast('Suggested mappings for ' + suggested + ' items | review and resolve.');
+  });
+
+  /* ---- Assign all to me ---- */
+  var assignAllBtn = Array.prototype.filter.call(document.querySelectorAll('.page-head .btn'), function (b) { return /Assign all to me/.test(b.textContent); })[0];
+  if (assignAllBtn) assignAllBtn.addEventListener('click', function () { assignAllToMe(); });
+
+  /* ---- Filter (New / Assigned / Snoozed / All) ---- */
+  var filterBtn = Array.prototype.filter.call(document.querySelectorAll('.page-head .btn'), function (b) { return b.textContent.trim() === 'Filter'; })[0];
+  if (filterBtn) {
+    filterBtn.addEventListener('click', function () {
+      var existing = document.querySelector('.arkk-exc-filter-menu');
+      if (existing) { existing.remove(); return; }
+      var menu = el('div', { cls: 'arkk-exc-filter-menu', style: 'position:absolute; z-index:40; margin-top:6px; background:oklch(100% 0 0 / 0.96); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow-pop); padding:6px; min-width:140px;' });
+      [['all', 'All'], ['new', 'New'], ['assigned', 'Assigned'], ['snoozed', 'Snoozed']].forEach(function (opt) {
+        var b = el('button', { type: 'button', text: opt[1], style: 'display:block; width:100%; text-align:left; padding:7px 9px; border-radius:8px; border:0; background:transparent; font-size:12.5px; color:var(--ink); cursor:pointer; font-family:inherit;' });
+        if (opt[0] === statusFilter) b.style.background = 'var(--bg-2)';
+        b.addEventListener('click', function () { statusFilter = opt[0]; renderQueue(); menu.remove(); });
+        menu.appendChild(b);
+      });
+      filterBtn.style.position = 'relative';
+      filterBtn.insertAdjacentElement('afterend', menu);
+    });
+  }
+
+  /* ---- Seg: All / Cost centres / Transactions ---- */
+  var segButtons = document.querySelectorAll('#queue-card .seg button');
+  segButtons.forEach(function (btn) {
+    var label = btn.textContent.trim();
+    var kind = label === 'Cost centres' ? 'cc' : (label === 'Transactions' ? 'txn' : 'all');
+    btn.addEventListener('click', function () {
+      segButtons.forEach(function (b) { b.classList.remove('on'); });
+      btn.classList.add('on');
+      kindFilter = kind;
+      renderQueue();
+    });
+  });
+
+  renderQueue();
+  renderDrawer(currentId);
+
+  /* Auto-select a freshly-created exception on deep-link (?new=<id>). */
+  var newIdMatch = window.location.search.match(/[?&]new=([^&]+)/);
+  if (newIdMatch) {
+    var newId = decodeURIComponent(newIdMatch[1]);
+    if (findItem(newId)) {
+      select(newId);
+      var newRow = queueListEl.querySelector('.queue-row[data-id="' + newId + '"]');
+      if (newRow) newRow.scrollIntoView({ behavior: Arkk.reduce ? 'auto' : 'smooth', block: 'center' });
+    }
+  }
+});
+</script>
+
+</body>
+</html>
